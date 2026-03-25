@@ -41,6 +41,8 @@ The extension interprets the response to the POST request as follows:
 
 ## Using in Google Sheets Apps Script
 
+You can start by making a copy of [this spreadsheet](https://docs.google.com/spreadsheets/d/1UlLLp5KLMbtYUJEV35B92Rj7j8ivbopPp-INh4W8lYw/edit)
+
 ### Apps Script Template
 
 ```javascript
