@@ -1,0 +1,31 @@
+{
+  "name": "apps-script-samples",
+  "private": true,
+  "version": "0.2.4",
+  "description": "Sample Apps Script Web App for use with Empower Poster extension",
+  "author": "Ted Romer <tromer@gmail.com>",
+  "license": "MIT",
+  "keywords": [
+    "finance"
+  ],
+  "type": "module",
+  "scripts": {
+    "build": "esbuild src/app.ts --bundle --format=iife --outfile=dist/app.js",
+    "build:redeploy": "yarn build && yarn redeploy",
+    "redeploy": "./clasp-redeploy.sh",
+    "check": "tsc --noEmit",
+    "lint": "yarn eslint {src,tests}/**/*.{js,ts}",
+    "lint:fix": "yarn lint --fix",
+    "prettier": "prettier {src,tests}/**/*.{js,ts} --check",
+    "prettier:fix": "prettier {src,tests}/**/*.{js,ts} --write",
+    "format": "yarn check && yarn prettier:fix && yarn lint:fix"
+  },
+  "devDependencies": {
+    "@types/google-apps-script": "^2.0.8",
+    "esbuild": "^0.27.4",
+    "eslint": "^10.1.0",
+    "prettier": "^3.8.1",
+    "typescript": "^6.0.2",
+    "typescript-eslint": "^8.57.2"
+  }
+}
