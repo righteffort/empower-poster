@@ -11,14 +11,18 @@
   "type": "module",
   "scripts": {
     "build": "esbuild src/app.ts --bundle --format=iife --outfile=dist/app.js && cp appsscript.json dist/",
-    "build:redeploy": "yarn build && yarn redeploy",
+    "build:check": "yarn check && yarn build",
+    "build:redeploy": "yarn build:check && yarn redeploy",
     "redeploy": "./clasp-redeploy.sh",
-    "check": "tsc --noEmit",
-    "lint": "yarn eslint {src,tests}/**/*.{js,ts}",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint '{src,tests}/**/*.{js,ts}'",
     "lint:fix": "yarn lint --fix",
-    "prettier": "prettier {src,tests}/**/*.{js,ts} --check",
-    "prettier:fix": "prettier {src,tests}/**/*.{js,ts} --write",
-    "format": "yarn check && yarn prettier:fix && yarn lint:fix"
+    "format:check": "prettier '{src,tests}/**/*.{js,ts}' --check",
+    "format": "prettier '{src,tests}/**/*.{js,ts}' --write",
+    "check": "yarn typecheck && yarn lint && yarn format:check",
+    "fix": "yarn lint:fix && yarn format",
+    "test": "echo 'Placeholder in case we ever add tests'",
+    "ci": "yarn check && yarn test"
   },
   "devDependencies": {
     "@types/google-apps-script": "^2.0.8",

@@ -19,21 +19,26 @@
   },
   "type": "module",
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "packageManager": "yarn@4.12.0",
   "scripts": {
-    "compile": "yarn lint && tsc",
     "dev": "vite",
-    "build": "yarn compile && vite build",
+    "build": "vite build",
+    "build:check": "yarn check && yarn build",
     "dist": "rm -f dist.zip && yarn build && cd dist && zip -r ../dist.zip *",
     "cli": "tsc -p tsconfig-cli.json && node dist-cli/cli/cli.js",
     "clean": "rm -rf dist dist-cli",
-    "lint": "eslint {src,tests}/**/*.ts",
-    "lint:fix": "eslint src/**/*.ts --fix",
-    "prettier": "prettier {src,tests}/**/*.{js,ts} --check",
-    "prettier:fix": "prettier {src,tests}/**/*.{js,ts} --write",
-    "test": "yarn vitest"
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint '{src,tests}/**/*.{js,ts}'",
+    "lint:fix": "yarn lint --fix",
+    "format:check": "prettier '{src,tests}/**/*.{js,ts}' --check",
+    "format": "prettier '{src,tests}/**/*.{js,ts}' --write",
+    "check": "yarn typecheck && yarn lint && yarn format:check",
+    "fix": "yarn lint:fix && yarn format",
+    "test:watch": "vitest",
+    "test": "vitest run",
+    "ci": "yarn check && yarn test"
   },
   "devDependencies": {
     "@eslint/js": "^9.35.0",
