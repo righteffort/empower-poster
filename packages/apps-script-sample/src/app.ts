@@ -82,8 +82,15 @@ function doPost(event: GoogleAppsScript.Events.DoPost) {
     if (!classificationsSheet || !holdingsSheet) {
       throw new Error("classifications and/or holdings sheet missing");
     }
-    writeHoldings(holdingsSheet, holdings);
-    writeClassifications(classificationsSheet, classifications);
+    let lock: GoogleAppsScript.Lock.Lock | undefined;
+    try {
+      lock = LockService.getScriptLock();
+      lock.waitLock(30_000);
+      writeHoldings(holdingsSheet, holdings);
+      writeClassifications(classificationsSheet, classifications);
+    } finally {
+      lock?.releaseLock();
+    }
 
     const responseBody: PostResponse = {
       success: true,

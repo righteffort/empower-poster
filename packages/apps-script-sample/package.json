@@ -10,7 +10,7 @@
   ],
   "type": "module",
   "scripts": {
-    "build": "esbuild src/app.ts --bundle --format=iife --outfile=dist/app.js",
+    "build": "esbuild src/app.ts --bundle --format=iife --outfile=dist/app.js && cp appsscript.json dist/",
     "build:redeploy": "yarn build && yarn redeploy",
     "redeploy": "./clasp-redeploy.sh",
     "check": "tsc --noEmit",
