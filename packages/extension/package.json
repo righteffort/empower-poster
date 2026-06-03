@@ -2,7 +2,7 @@
   "name": "extension",
   "private": true,
   "description": "Browser extension that posts Empower data to a user-provided endpoint",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "author": "Ted Romer <tromer@gmail.com>",
   "license": "MIT",
   "keywords": [
@@ -43,7 +43,7 @@
     "prettier": "^3.8.1",
     "typescript": "^5.9.2",
     "typescript-eslint": "^8.43.0",
-    "vite": "^5.0.0",
+    "vite": "^8.0.16",
     "vite-plugin-web-extension": "^4.0.0",
     "vitest": "^4.0.16",
     "webextension-polyfill": "^0.10.0"

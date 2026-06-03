@@ -30,7 +30,8 @@
   "content_scripts": [
     {
       "matches": [
-	"https://ira.empower-retirement.com/*"
+	"https://ira.empower-retirement.com/*",
+	"https://participant.empower-retirement.com/*"
       ],
       "js": ["src/content.ts"]
     }
