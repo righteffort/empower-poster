@@ -3,73 +3,73 @@
     "ASSET_ZERO_NEG": [
       {
         "classes": ["Cash", ""],
-        "pct": 0.16666666667
+        "fraction": 0.16666666667
       },
       {
         "classes": ["US Stocks", ""],
-        "pct": 0.5
+        "fraction": 0.5
       },
       {
         "classes": ["Intl Stocks", ""],
-        "pct": 0.25
+        "fraction": 0.25
       },
       {
         "classes": ["Bonds", ""],
-        "pct": 0.08333333333
+        "fraction": 0.08333333333
       }
     ],
     "ASSET_ONE_NEG": [
       {
         "classes": ["Cash", ""],
-        "pct": 0.25
+        "fraction": 0.25
       },
       {
         "classes": ["US Stocks", ""],
-        "pct": 0
+        "fraction": 0
       },
       {
         "classes": ["Intl Stocks", ""],
-        "pct": 0.625
+        "fraction": 0.625
       },
       {
         "classes": ["Bonds", ""],
-        "pct": 0.125
+        "fraction": 0.125
       }
     ],
     "ASSET_TWO_NEG": [
       {
         "classes": ["Cash", ""],
-        "pct": 0.65217391304
+        "fraction": 0.65217391304
       },
       {
         "classes": ["US Stocks", ""],
-        "pct": 0
+        "fraction": 0
       },
       {
         "classes": ["Intl Stocks", ""],
-        "pct": 0
+        "fraction": 0
       },
       {
         "classes": ["Bonds", ""],
-        "pct": 0.34782608696
+        "fraction": 0.34782608696
       }
     ],
     "ASSET_MULTI_ACCT": [
       {
         "classes": ["Cash", ""],
-        "pct": 0.55555555556
+        "fraction": 0.55555555556
       },
       {
         "classes": ["US Stocks", ""],
-        "pct": 0
+        "fraction": 0
       },
       {
         "classes": ["Intl Stocks", ""],
-        "pct": 0.16666666667
+        "fraction": 0.16666666667
       },
       {
         "classes": ["Bonds", ""],
-        "pct": 0.27777777778
+        "fraction": 0.27777777778
       }
     ]
   },
@@ -77,27 +77,27 @@
     {
       "ticker": "ASSET_ONE_NEG",
       "classes": ["US Stocks", ""],
-      "pct": -0.14285714285714285
+      "fraction": -0.14285714285714285
     },
     {
       "ticker": "ASSET_TWO_NEG",
       "classes": ["US Stocks", ""],
-      "pct": -0.16666666666666666
+      "fraction": -0.16666666666666666
     },
     {
       "ticker": "ASSET_MULTI_ACCT",
       "classes": ["US Stocks", ""],
-      "pct": -0.125
+      "fraction": -0.125
     },
     {
       "ticker": "ASSET_MULTI_ACCT",
       "classes": ["US Stocks", ""],
-      "pct": -0.125
+      "fraction": -0.125
     },
     {
       "ticker": "ASSET_TWO_NEG",
       "classes": ["Intl Stocks", ""],
-      "pct": -0.1111111111111111
+      "fraction": -0.1111111111111111
     }
   ]
 }

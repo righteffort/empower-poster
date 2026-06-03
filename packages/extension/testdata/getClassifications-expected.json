@@ -6,35 +6,35 @@
           "Cash",
           ""
 	],
-	"pct": 0.34533162799
+	"fraction": 0.34533162799
       },
       {
 	"classes": [
           "Intl Bonds",
           "Government"
 	],
-	"pct": 0.14416225105
+	"fraction": 0.14416225105
       },
       {
 	"classes": [
           "Intl Bonds",
           "Corporate"
 	],
-	"pct": 0.2727937146
+	"fraction": 0.2727937146
       },
       {
 	"classes": [
           "U.S. Bonds",
           "Government"
 	],
-	"pct": 0.22684085511
+	"fraction": 0.22684085511
       },
       {
 	"classes": [
           "U.S. Bonds",
           ""
 	],
-	"pct": 0.01087155125
+	"fraction": 0.01087155125
       }
     ],
     "TICK2": [
@@ -43,28 +43,28 @@
           "Cash",
           ""
 	],
-	"pct": 0.04545454545
+	"fraction": 0.04545454545
       },
       {
 	"classes": [
           "Intl Bonds",
           "Government"
 	],
-	"pct": 0.49654965497
+	"fraction": 0.49654965497
       },
       {
 	"classes": [
           "Intl Bonds",
           "Corporate"
 	],
-	"pct": 0.25162516252
+	"fraction": 0.25162516252
       },
       {
 	"classes": [
           "U.S. Bonds",
           ""
 	],
-	"pct": 0.20637063706
+	"fraction": 0.20637063706
       }
     ],
     "TICK3": [
@@ -73,21 +73,21 @@
           "Cash",
           ""
 	],
-	"pct": 0.02200772201
+	"fraction": 0.02200772201
       },
       {
 	"classes": [
           "Intl Bonds",
           "Government"
 	],
-	"pct": 0.48378378378
+	"fraction": 0.48378378378
       },
       {
 	"classes": [
           "U.S. Bonds",
           ""
 	],
-	"pct": 0.49420849421
+	"fraction": 0.49420849421
       }
     ],
     "TICK4": [
@@ -96,14 +96,14 @@
           "Cash",
           ""
 	],
-	"pct": 1
+	"fraction": 1
       },
       {
 	"classes": [
           "Intl Bonds",
           "Corporate"
 	],
-	"pct": 0
+	"fraction": 0
       }
     ],
     "Cash": [
@@ -112,7 +112,7 @@
           "Cash",
           ""
 	],
-	"pct": 1
+	"fraction": 1
       }
     ],
     "FBIIX": [
@@ -121,21 +121,21 @@
           "Cash",
           ""
 	],
-	"pct": 0.02752909579
+	"fraction": 0.02752909579
       },
       {
 	"classes": [
           "Intl Bonds",
           "Government"
 	],
-	"pct": 0.62802148612
+	"fraction": 0.62802148612
       },
       {
 	"classes": [
           "Intl Bonds",
           "Corporate"
 	],
-	"pct": 0.34444941808
+	"fraction": 0.34444941808
       }
     ],
     "TICK6": [
@@ -144,7 +144,7 @@
           "U.S. Bonds",
           "Government"
 	],
-	"pct": 1
+	"fraction": 1
       }
     ]
   },
