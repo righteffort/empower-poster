@@ -1,4 +1,6 @@
 export interface HoldingEntry {
+  /** cusip is typically blank for manual holdings, non-blank otherwise. */
+  cusip: string;
   userAccountId: number;
   ticker: string;
   price: number;

@@ -25,6 +25,7 @@ interface ClassificationErrorInternal {
 
 // Holding data returned by Empower
 interface HoldingEntryIn {
+  cusip?: string;
   userAccountId: number;
   description?: string;
   ticker?: string;
@@ -58,6 +59,7 @@ interface ClassificationValue {
 export function getHoldings(holdingsIn: HoldingEntryIn[]): HoldingEntry[] {
   return holdingsIn
     .map((h) => ({
+      cusip: h.cusip || "",
       userAccountId: h.userAccountId,
       price: h.price,
       quantity: h.quantity,

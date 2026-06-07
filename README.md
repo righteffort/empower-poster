@@ -16,8 +16,9 @@ The types referenced below are defined in [`api.ts`](./packages/extension/src/ap
 The extension makes HTTPS POST requests with `Content-Type:
 application/json`. The payload conforms to `PostPayload` and contains:
 - `version`: API version.
-- `holdings`: Array of `HoldingEntry` objects with account, ticker,
-  price, quantity, and value.
+- `holdings`: Array of `HoldingEntry` objects with cusip,
+  userAccountId, ticker, price, quantity, and value. `cusip` will
+  generally be blank for manual holdings, and non-blank for others.
 - `classifications`: `Classifications` object mapping tickers to asset
   classifications.
   - For each ticker there is one or more Classification entries, with

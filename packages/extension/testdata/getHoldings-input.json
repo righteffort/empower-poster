@@ -1,5 +1,6 @@
 [
   {
+    "cusip": "ca",
     "description": "Cash",
     "userAccountId": 1,
     "price": 1,
@@ -7,6 +8,7 @@
     "value": 17.11
   },
   {
+    "cusip": "bn",
     "description": "Bonds",
     "userAccountId": 2,
     "price": 5,
@@ -15,6 +17,7 @@
     "ticker": "BND"
   },
   {
+    "cusip": "ca",
     "description": "Cash",
     "userAccountId": 2,
     "price": 1,
@@ -22,6 +25,7 @@
     "value": 0.12
   },
   {
+    "cusip": "vt",
     "description": "Stocks",
     "price": 0.20,
     "quantity": 495.05,
@@ -30,6 +34,7 @@
     "userAccountId": 3
   },
   {
+    "cusip": "bn",
     "description": "Bonds",
     "price": 4.1,
     "quantity": 3.8,
@@ -38,6 +43,7 @@
     "userAccountId": 3
   },
   {
+    "cusip": "ss",
     "description": "Stocks",
     "price": 0.42,
     "quantity": 3,
@@ -46,6 +52,7 @@
     "userAccountId": 4
   },
   {
+    "cusip": "",
     "description": "Oddball",
     "price": 1.67,
     "quantity": 34,
