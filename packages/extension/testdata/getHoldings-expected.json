@@ -1,5 +1,6 @@
 [
   {
+    "cusip": "ca",
     "userAccountId": 1,
     "ticker": "Cash",
     "price": 1,
@@ -7,6 +8,7 @@
     "value": 17.11
   },
   {
+    "cusip": "bn",
     "userAccountId": 2,
     "ticker": "BND",
     "price": 5,
@@ -14,6 +16,7 @@
     "value": 3.14
   },
   {
+    "cusip": "ca",
     "userAccountId": 2,
     "ticker": "Cash",
     "price": 1,
@@ -21,6 +24,7 @@
     "value": 0.12
   },
   {
+    "cusip": "vt",
     "userAccountId": 3,
     "ticker": "VTI",
     "price": 0.20,
@@ -28,6 +32,7 @@
     "value": 99.01
   },
   {
+    "cusip": "bn",
     "userAccountId": 3,
     "ticker": "BND",
     "price": 4.1,
@@ -35,6 +40,7 @@
     "value": 15.58
   },
   {
+    "cusip": "ss",
     "userAccountId": 4,
     "ticker": "SSS",
     "price": 0.42,
@@ -42,6 +48,7 @@
     "value": 1.26
   },
   {
+    "cusip": "",
     "userAccountId": 4,
     "ticker": "Oddball",
     "price": 1.67,
@@ -49,6 +56,7 @@
     "value": 56.78
   },
   {
+    "cusip": "",
     "userAccountId": 4,
     "ticker": "ZEROV",
     "price": 0,
