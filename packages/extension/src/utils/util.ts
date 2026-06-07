@@ -1,7 +1,8 @@
-import browser from "webextension-polyfill";
+import { browser } from "#imports";
 
 export async function getPostUrl(): Promise<string> {
-  return (await browser.storage.sync.get("postUrl"))["postUrl"] ?? "";
+  const val = (await browser.storage.sync.get("postUrl"))["postUrl"];
+  return typeof val === "string" ? val : "";
 }
 
 export async function setPostUrl(postUrl: string) {
