@@ -24,10 +24,6 @@
         "fraction": 0.25
       },
       {
-        "classes": ["US Stocks", ""],
-        "fraction": 0
-      },
-      {
         "classes": ["Intl Stocks", ""],
         "fraction": 0.625
       },
@@ -42,14 +38,6 @@
         "fraction": 0.65217391304
       },
       {
-        "classes": ["US Stocks", ""],
-        "fraction": 0
-      },
-      {
-        "classes": ["Intl Stocks", ""],
-        "fraction": 0
-      },
-      {
         "classes": ["Bonds", ""],
         "fraction": 0.34782608696
       }
@@ -58,10 +46,6 @@
       {
         "classes": ["Cash", ""],
         "fraction": 0.55555555556
-      },
-      {
-        "classes": ["US Stocks", ""],
-        "fraction": 0
       },
       {
         "classes": ["Intl Stocks", ""],

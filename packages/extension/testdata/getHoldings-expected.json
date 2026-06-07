@@ -47,5 +47,12 @@
     "price": 1.67,
     "quantity": 34,
     "value": 56.78
+  },
+  {
+    "userAccountId": 4,
+    "ticker": "ZEROV",
+    "price": 0,
+    "quantity": 1.2,
+    "value": 0
   }
 ]

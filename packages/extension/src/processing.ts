@@ -56,13 +56,15 @@ interface ClassificationValue {
 }
 
 export function getHoldings(holdingsIn: HoldingEntryIn[]): HoldingEntry[] {
-  return holdingsIn.map((h) => ({
-    userAccountId: h.userAccountId,
-    price: h.price,
-    quantity: h.quantity,
-    value: h.value,
-    ticker: h.ticker || h.description || "",
-  }));
+  return holdingsIn
+    .map((h) => ({
+      userAccountId: h.userAccountId,
+      price: h.price,
+      quantity: h.quantity,
+      value: h.value,
+      ticker: h.ticker || h.description || "",
+    }))
+    .filter((h) => h.quantity !== 0);
 }
 
 interface ProcessClassificationsResult {
@@ -160,7 +162,7 @@ function groupByTickerWithFractions(
             value == total
               ? 1
               : Math.round((value / total) * PRECISION) / PRECISION,
-        })),
+        })).filter((e) => e.fraction !== 0),
       ];
     }),
   );

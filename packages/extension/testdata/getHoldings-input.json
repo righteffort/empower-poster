@@ -52,5 +52,21 @@
     "value": 56.78,
     "ticker": "",
     "userAccountId": 4
+  },
+  {
+    "description": "ZeroQuantity",
+    "price": 1.67,
+    "quantity": 0,
+    "value": 0,
+    "ticker": "ZEROQ",
+    "userAccountId": 4
+  },
+  {
+    "description": "ZeroValue",
+    "price": 0,
+    "quantity": 1.2,
+    "value": 0,
+    "ticker": "ZEROV",
+    "userAccountId": 4
   }
 ]
