@@ -1,10 +1,13 @@
 import { describe, it, expect } from "vitest";
-import { getHoldings, getClassifications } from "../src/processing.js";
+import {
+  getHoldings,
+  getClassifications,
+} from "../src/entrypoints/content/processing.js";
 import type {
   Classifications,
   ClassificationIn,
   ClassificationError,
-} from "../src/processing.js";
+} from "../src/entrypoints/content/processing.js";
 import { globSync, readFileSync } from "fs";
 
 describe("getHoldings", () => {
