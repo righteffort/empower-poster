@@ -56,6 +56,14 @@ interface ClassificationValue {
   userAccountId: number;
 }
 
+function cleanTicker(ticker: string): string {
+  // For whatever reason FSPSX can show up at Empower as FSIVX.
+  if (ticker === "FSIVX") {
+    return "FSPSX";
+  }
+  return ticker;
+}
+
 export function getHoldings(holdingsIn: HoldingEntryIn[]): HoldingEntry[] {
   return holdingsIn
     .map((h) => ({
@@ -64,7 +72,7 @@ export function getHoldings(holdingsIn: HoldingEntryIn[]): HoldingEntry[] {
       price: h.price,
       quantity: h.quantity,
       value: h.value,
-      ticker: h.ticker || h.description || "",
+      ticker: cleanTicker(h.ticker || "") || h.description || "",
     }))
     .filter((h) => h.quantity !== 0);
 }
@@ -87,7 +95,7 @@ function processClassifications(
     subClassName: string,
   ) {
     for (const asset of assets) {
-      const ticker = asset.ticker || asset.description || "";
+      const ticker = cleanTicker(asset.ticker || "") || asset.description || "";
       if (asset.value < 0) {
         errors.push({
           ticker,
