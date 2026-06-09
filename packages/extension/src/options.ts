@@ -1,6 +1,6 @@
 // TODO: merge {onboarding,options}.{html,ts}.
 
-import { setPostUrl } from "../../utils/util";
+import { getPostUrl, setPostUrl } from "./util";
 
 const urlInput = document.getElementById("postUrl") as HTMLInputElement;
 const saveButton = document.getElementById("saveButton") as HTMLButtonElement;
@@ -13,6 +13,13 @@ function showStatus(message: string, type: string) {
 
 urlInput.addEventListener("input", () => showStatus("", ""));
 
+await (async function () {
+  const postUrl = await getPostUrl();
+  if (postUrl) {
+    urlInput.value = postUrl;
+  }
+})();
+
 saveButton.addEventListener("click", async () => {
   const postUrl = urlInput.value.trim();
   if (!postUrl) {
@@ -21,10 +28,7 @@ saveButton.addEventListener("click", async () => {
   }
   try {
     await setPostUrl(postUrl);
-    showStatus("Settings saved, you may close this window.", "success");
-    // setTimeout(() => {
-    //  window.close();
-    // }, 3000);
+    showStatus("Settings saved", "success");
   } catch (e) {
     const msg = `Failed: ${e instanceof Error ? e.message : e}`;
     showStatus(msg, "error");

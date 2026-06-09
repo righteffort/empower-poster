@@ -19,12 +19,10 @@
   },
   "type": "module",
   "scripts": {
-    "dev": "wxt",
-    "dev:firefox": "wxt -b firefox",
-    "build": "wxt build",
-    "build:firefox": "wxt build -b firefox",
-    "zip": "wxt zip",
-    "zip:firefox": "wxt zip -b firefox",
+    "dev": "vite",
+    "build": "vite build",
+    "build:check": "yarn check && yarn build",
+    "dist": "rm -f dist.zip && yarn build && cd dist && zip -r ../dist.zip *",
     "clean": "rm -rf dist",
     "typecheck": "tsc --noEmit",
     "lint": "eslint '{.,src,tests}/**/*.{js,ts}'",
@@ -35,16 +33,17 @@
     "fix": "yarn lint:fix && yarn format",
     "test:watch": "vitest",
     "test": "vitest run",
-    "ci": "yarn check && yarn test",
-    "postinstall": "wxt prepare"
+    "ci": "yarn check && yarn test"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@types/chrome": "^0.1.43",
+    "@types/node": "^25.0.3",
     "eslint": "^10.4.1",
     "prettier": "^3.8.3",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.60.1",
-    "vitest": "^4.1.8",
-    "wxt": "^0.20.26"
+    "vite": "^8.0.16",
+    "vitest": "^4.1.8"
   }
 }

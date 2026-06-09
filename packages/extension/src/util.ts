@@ -1,13 +1,11 @@
-import { browser } from "#imports";
-
 export async function getPostUrl(): Promise<string> {
-  const val = (await browser.storage.sync.get("postUrl"))["postUrl"];
+  const val = (await chrome.storage.sync.get("postUrl"))["postUrl"];
   return typeof val === "string" ? val : "";
 }
 
 export async function setPostUrl(postUrl: string) {
   const originPattern = getOriginPattern(postUrl);
-  const granted = await browser.permissions.request({
+  const granted = await chrome.permissions.request({
     origins: [originPattern],
   });
   if (!granted) {
@@ -15,7 +13,7 @@ export async function setPostUrl(postUrl: string) {
       `Permission was denied. Extension cannot POST data to .${postUrl}`,
     );
   }
-  await browser.storage.sync.set({ postUrl });
+  await chrome.storage.sync.set({ postUrl });
 }
 
 function getOriginPattern(url: string) {

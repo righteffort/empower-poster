@@ -1,8 +1,5 @@
 import { type FileHandle, open, readFile } from "fs/promises";
-import {
-  getClassifications,
-  getHoldings,
-} from "../src/entrypoints/content/processing";
+import { getClassifications, getHoldings } from "../src/processing";
 
 async function readJsonFile<T>(infile: string | FileHandle): Promise<T> {
   try {
