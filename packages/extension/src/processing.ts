@@ -1,4 +1,5 @@
 import type {
+  Account,
   HoldingEntry,
   Classifications,
 } from "@righteffort/empower-poster-types";
@@ -26,6 +27,7 @@ interface ClassificationErrorInternal {
 // Holding data returned by Empower
 interface HoldingEntryIn {
   cusip?: string;
+  accountName: string;
   userAccountId: number;
   description?: string;
   ticker?: string;
@@ -64,28 +66,47 @@ function cleanTicker(ticker: string): string {
   return ticker;
 }
 
-export function getHoldings(holdingsIn: HoldingEntryIn[]): HoldingEntry[] {
-  return holdingsIn
-    .map((h) => ({
-      cusip: h.cusip || "",
-      userAccountId: h.userAccountId,
-      price: h.price,
-      quantity: h.quantity,
-      value: h.value,
-      ticker: cleanTicker(h.ticker || "") || h.description || "",
-    }))
-    .filter((h) => h.quantity !== 0);
-}
-
-interface ProcessClassificationsResult {
-  values: ClassificationValue[];
-  errors: ClassificationErrorInternal[];
+export function getHoldingsAndAccounts(holdingsIn: HoldingEntryIn[]): {
+  holdings: HoldingEntry[];
+  accounts: Account[];
+} {
+  const holdings: HoldingEntry[] = [];
+  const accountMap = new Map<number, string>();
+  holdingsIn.forEach((h) => {
+    const { userAccountId, accountName } = h;
+    if (h.quantity !== 0) {
+      holdings.push({
+        cusip: h.cusip || "",
+        userAccountId,
+        price: h.price,
+        quantity: h.quantity,
+        value: h.value,
+        ticker: cleanTicker(h.ticker || "") || h.description || "",
+      });
+    }
+    if (userAccountId != null && accountName) {
+      if (accountMap.has(userAccountId)) {
+        if (accountMap.get(userAccountId) !== accountName) {
+          console.warn(
+            `account ${userAccountId} already has name ${accountMap.get(userAccountId)}, dropping conflicting name ${accountName}`,
+          );
+        }
+      } else {
+        accountMap.set(userAccountId, accountName);
+      }
+    }
+  });
+  const accounts = Array.from(accountMap.entries()).map(([id, name]) => {
+    return { id, name };
+  });
+  return { holdings, accounts };
 }
 
 // Flatten Empower classification data. Also return details for any negative allocations.
-function processClassifications(
-  input: ClassificationIn[],
-): ProcessClassificationsResult {
+function processClassifications(input: ClassificationIn[]): {
+  classifications: ClassificationValue[];
+  errors: ClassificationErrorInternal[];
+} {
   const valueMap: ClassificationValue[] = [];
   const errors: ClassificationErrorInternal[] = [];
 
@@ -130,7 +151,7 @@ function processClassifications(
       }
     }
   }
-  return { values: valueMap, errors };
+  return { classifications: valueMap, errors };
 }
 
 const PRECISION = 100000000000;
@@ -207,6 +228,6 @@ function groupByTickerWithFractions(
 export function getClassifications(
   input: ClassificationIn[],
 ): ClassificationsResult {
-  const { values: adjustedEntries, errors } = processClassifications(input);
-  return groupByTickerWithFractions(adjustedEntries, errors);
+  const { classifications, errors } = processClassifications(input);
+  return groupByTickerWithFractions(classifications, errors);
 }

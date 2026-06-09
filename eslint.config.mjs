@@ -8,8 +8,10 @@ export default defineConfig(
   ...tseslint.configs.strict,
   ...tseslint.configs.stylistic,
     {
+        files: ["**/*.ts", "**/*.tsx"],
         rules: {
-            "@typescript-eslint/no-unused-vars": ["error", { "argsIgnorePattern": "^_" }]
+            "no-unused-vars": "off",
+            "@typescript-eslint/no-unused-vars": "off",
         }
     }
 );

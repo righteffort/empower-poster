@@ -19,15 +19,28 @@ export interface Classification {
 }
 
 /**
+  A user account.
+ */
+export interface Account {
+  /**
+   The account id from Empower; referenced from `HoldingEntry.userAccountId`.
+   array.
+   */
+  id: number;
+  name: string;
+}
+
+/**
   A set of Classification objects keyed by ticker. The fractions for one
   ticker's Classification array add to 1.
  */
 export type Classifications = Record<string, Classification[]>;
 
 export interface PostPayload {
-  version: "0.3";
+  version: { major: 0; minor: 4 };
   holdings: HoldingEntry[];
   classifications: Classifications;
+  accounts: Account[];
 }
 
 export interface SuccessResponse {
