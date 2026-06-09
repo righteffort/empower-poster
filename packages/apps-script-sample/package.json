@@ -10,7 +10,7 @@
   ],
   "type": "module",
   "scripts": {
-    "build": "esbuild src/app.ts --bundle --format=iife --outfile=dist/app.js && cp appsscript.json dist/",
+    "build": "rollup --config --no-treeshake && cp appsscript.json dist/",
     "build:check": "yarn check && yarn build",
     "build:redeploy": "yarn build:check && yarn redeploy",
     "redeploy": "./clasp-redeploy.sh",
@@ -25,10 +25,13 @@
     "ci": "yarn check && yarn test"
   },
   "devDependencies": {
+    "@rollup/plugin-node-resolve": "^16.0.3",
+    "@rollup/plugin-typescript": "^12.3.0",
     "@types/google-apps-script": "^2.0.8",
-    "esbuild": "^0.27.4",
     "eslint": "^10.1.0",
     "prettier": "^3.8.1",
+    "rollup": "^4.61.1",
+    "tslib": "^2.8.1",
     "typescript": "^6.0.2",
     "typescript-eslint": "^8.57.2"
   }

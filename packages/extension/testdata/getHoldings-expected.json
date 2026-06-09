@@ -1,66 +1,86 @@
-[
-  {
-    "cusip": "ca",
-    "userAccountId": 1,
-    "ticker": "Cash",
-    "price": 1,
-    "quantity": 17.11,
-    "value": 17.11
-  },
-  {
-    "cusip": "bn",
-    "userAccountId": 2,
-    "ticker": "BND",
-    "price": 5,
-    "quantity": 0.628,
-    "value": 3.14
-  },
-  {
-    "cusip": "ca",
-    "userAccountId": 2,
-    "ticker": "Cash",
-    "price": 1,
-    "quantity": 0.12,
-    "value": 0.12
-  },
-  {
-    "cusip": "vt",
-    "userAccountId": 3,
-    "ticker": "VTI",
-    "price": 0.20,
-    "quantity": 495.05,
-    "value": 99.01
-  },
-  {
-    "cusip": "bn",
-    "userAccountId": 3,
-    "ticker": "BND",
-    "price": 4.1,
-    "quantity": 3.8,
-    "value": 15.58
-  },
-  {
-    "cusip": "ss",
-    "userAccountId": 4,
-    "ticker": "FSPSX",
-    "price": 0.42,
-    "quantity": 3,
-    "value": 1.26
-  },
-  {
-    "cusip": "",
-    "userAccountId": 4,
-    "ticker": "Oddball",
-    "price": 1.67,
-    "quantity": 34,
-    "value": 56.78
-  },
-  {
-    "cusip": "",
-    "userAccountId": 4,
-    "ticker": "ZEROV",
-    "price": 0,
-    "quantity": 1.2,
-    "value": 0
-  }
-]
+{
+  "holdings": [
+    {
+      "cusip": "ca",
+      "userAccountId": 1,
+      "ticker": "Cash",
+      "price": 1,
+      "quantity": 17.11,
+      "value": 17.11
+    },
+    {
+      "cusip": "bn",
+      "userAccountId": 2,
+      "ticker": "BND",
+      "price": 5,
+      "quantity": 0.628,
+      "value": 3.14
+    },
+    {
+      "cusip": "ca",
+      "userAccountId": 2,
+      "ticker": "Cash",
+      "price": 1,
+      "quantity": 0.12,
+      "value": 0.12
+    },
+    {
+      "cusip": "vt",
+      "userAccountId": 3,
+      "ticker": "VTI",
+      "price": 0.20,
+      "quantity": 495.05,
+      "value": 99.01
+    },
+    {
+      "cusip": "bn",
+      "userAccountId": 3,
+      "ticker": "BND",
+      "price": 4.1,
+      "quantity": 3.8,
+      "value": 15.58
+    },
+    {
+      "cusip": "ss",
+      "userAccountId": 4,
+      "ticker": "FSPSX",
+      "price": 0.42,
+      "quantity": 3,
+      "value": 1.26
+    },
+    {
+      "cusip": "",
+      "userAccountId": 4,
+      "ticker": "Oddball",
+      "price": 1.67,
+      "quantity": 34,
+      "value": 56.78
+    },
+    {
+      "cusip": "",
+      "userAccountId": 4,
+      "ticker": "ZEROV",
+      "price": 0,
+      "quantity": 1.2,
+      "value": 0
+    }
+  ],
+  "accounts": [
+    {
+      "id": 1,
+      "name": "One"
+    },
+    {
+      "id": 2,
+      "name": "Two"
+    },
+    {
+      "id": 3,
+      "name": "Three"
+    },
+    {
+      "id": 4,
+      "name": "Four"
+    }
+  ]
+}

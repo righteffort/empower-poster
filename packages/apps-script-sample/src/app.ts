@@ -5,6 +5,7 @@ import type {
   PostResponse,
   HoldingEntry,
   Classifications,
+  Account,
 } from "@righteffort/empower-poster-types";
 
 function writeHoldings(
@@ -56,31 +57,52 @@ function writeClassifications(
   }
 }
 
-function doPost(event: GoogleAppsScript.Events.DoPost) {
-  try {
-    const { version, holdings, classifications } = JSON.parse(
-      event.postData.contents,
-    ) as PostPayload;
+function writeAccounts(
+  accountsSheet: GoogleAppsScript.Spreadsheet.Sheet,
+  accounts: Account[],
+) {
+  accountsSheet.clear();
+  const headers = ["id", "name"];
+  accountsSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
 
+  if (accounts.length > 0) {
+    const accountsData = accounts.map((account) => [account.id, account.name]);
+    accountsSheet
+      .getRange(2, 1, accountsData.length, headers.length)
+      .setValues(accountsData);
+  }
+}
+
+// @ts-expect-error: Used from Apps Script
+function doPost(e: GoogleAppsScript.Events.DoPost) {
+  try {
+    const {
+      version: { major, minor },
+      holdings,
+      classifications,
+      accounts,
+    } = JSON.parse(e.postData.contents) as PostPayload;
+    console.log(`API version: ${major}.${minor}`);
+    const supported = { major: 0, minor: 4 };
+    if (major !== supported.major || minor < supported.minor) {
+      throw new Error(
+        `data version ${major}.${minor} not supported, expected at least ${supported.major}.${supported.minor}`,
+      );
+    }
     console.log(`Received ${holdings.length} holdings`);
     console.log(
       `Classifications for ${Object.keys(classifications).length} tickers`,
     );
-    console.log(`API version: ${version}`);
-
-    const supportedVersion = "0.3";
-    if (version !== supportedVersion) {
-      throw new Error(
-        `data version ${version} not supported, expected ${supportedVersion}`,
-      );
-    }
-
+    console.log(`${accounts.length} accounts`);
     // Write data to sheets
     const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
     const classificationsSheet = spreadsheet.getSheetByName("classifications");
     const holdingsSheet = spreadsheet.getSheetByName("holdings");
-    if (!classificationsSheet || !holdingsSheet) {
-      throw new Error("classifications and/or holdings sheet missing");
+    const accountsSheet = spreadsheet.getSheetByName("accounts");
+    if (!classificationsSheet || !holdingsSheet || !accountsSheet) {
+      throw new Error(
+        "One or more of classifications, holdings, or accounts sheets missing",
+      );
     }
     let lock: GoogleAppsScript.Lock.Lock | undefined;
     try {
@@ -88,6 +110,7 @@ function doPost(event: GoogleAppsScript.Events.DoPost) {
       lock.waitLock(30_000);
       writeHoldings(holdingsSheet, holdings);
       writeClassifications(classificationsSheet, classifications);
+      writeAccounts(accountsSheet, accounts);
     } finally {
       lock?.releaseLock();
     }
@@ -109,6 +132,3 @@ function doPost(event: GoogleAppsScript.Events.DoPost) {
     ).setMimeType(ContentService.MimeType.JSON);
   }
 }
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-(globalThis as any).doPost = doPost;

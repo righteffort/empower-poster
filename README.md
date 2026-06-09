@@ -25,6 +25,9 @@ application/json`. The payload conforms to `PostPayload` and contains:
   fractions that add to 1.
   - Each Classification has the asset class, asset subclass (possibly
   empty), and fraction.
+- accounts: Array of `Account` objects with id and name. `id` is
+  referenced by `HoldingEntry.userAccountId` and is unique in the
+  array.
 
 ### Response
 
@@ -49,15 +52,15 @@ You can start by making a copy of [this spreadsheet](https://docs.google.com/spr
 ```javascript
 function doPost(e) {
   try {
-    const {version, holdings, classifications} = JSON.parse(e.postData.contents);
-
+    const {version: {major, minor}, holdings, classifications, accounts} = JSON.parse(e.postData.contents);
+    if (major !== 0 || minor < 4) {
+        throw new Error(`data version ${major}.${minor} not supported`);
+    }
+    console.log(`API version: ${major}.${minor}`);
     console.log(`Received ${holdings.length} holdings`);
     console.log(`Classifications for ${Object.keys(classifications).length} tickers`);
-    console.log(`API version: ${version}`);
+    console.log(`${accounts.length} accounts`);
     
-	if (version !== "0.3") {
-		throw new Error(`data version ${version} not supported`);
-	}
     // Process data here (e.g., write to spreadsheet)
     
     return ContentService

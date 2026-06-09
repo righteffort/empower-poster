@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { getHoldings, getClassifications } from "../src/processing.js";
+import {
+  getHoldingsAndAccounts,
+  getClassifications,
+} from "../src/processing.js";
 import type {
   Classifications,
   ClassificationIn,
@@ -7,18 +10,22 @@ import type {
 } from "../src/processing.js";
 import { globSync, readFileSync } from "fs";
 
-describe("getHoldings", () => {
-  it("should run getHoldings correctly", () => {
+describe("getHoldingsAndAccounts", () => {
+  it("should run getHoldingsAndAccounts correctly", () => {
     for (const inputFile of globSync(
       "{,private/}testdata/*getHoldings*-input.json",
     )) {
       const expectedFile = inputFile.replace("-input", "-expected");
       const input = JSON.parse(readFileSync(inputFile, "utf-8"));
-      const actual = getHoldings(input);
-      // const actualFile = inputFile.replace('-input','-actual');
+      const actual = getHoldingsAndAccounts(input);
+      // const actualFile = inputFile.replace("-input", "-actual");
       // writeFileSync(actualFile, JSON.stringify(actual, null, 2));
+      const { holdings: actualHoldings, accounts: actualAccounts } = actual;
       const expected = JSON.parse(readFileSync(expectedFile, "utf-8"));
-      expect(new Set(actual)).toEqual(new Set(expected));
+      const { holdings: expectedHoldings, accounts: expectedAccounts } =
+        expected;
+      expect(new Set(actualHoldings)).toEqual(new Set(expectedHoldings));
+      expect(new Set(actualAccounts)).toEqual(new Set(expectedAccounts));
     }
   });
 });

@@ -1,5 +1,6 @@
-import { getClassifications, getHoldings } from "./processing";
+import { getClassifications, getHoldingsAndAccounts } from "./processing";
 import type {
+  Account,
   Classifications,
   HoldingEntry,
 } from "@righteffort/empower-poster-types";
@@ -69,15 +70,18 @@ button.onclick = async () => {
 
     const classificationsIn =
       resultsJson.spData.classifications[0].classifications;
-    const holdings = getHoldings(resultsJson.spData.holdings);
-    const classificationsResult = getClassifications(classificationsIn);
+    const { holdings, accounts } = getHoldingsAndAccounts(
+      resultsJson.spData.holdings,
+    );
+    const { classifications, errors: classificationsErrors } =
+      getClassifications(classificationsIn);
 
-    if (classificationsResult.errors.length > 0) {
-      if (classificationsResult.errors.length > 20) {
-        statusLine.innerHTML = `${classificationsResult.errors.length} negative categorizations found, see console for details`;
-        console.log("Negative categorizations:", classificationsResult.errors);
+    if (classificationsErrors.length > 0) {
+      if (classificationsErrors.length > 20) {
+        statusLine.innerHTML = `${classificationsErrors.length} negative categorizations found, see console for details`;
+        console.log("Negative categorizations:", classificationsErrors);
       } else {
-        const errorList = classificationsResult.errors
+        const errorList = classificationsErrors
           .map((error) => {
             const pct = parseFloat((error.fraction * 100).toFixed(6));
             const classStr = error.classes.filter(Boolean).join(":");
@@ -112,10 +116,7 @@ button.onclick = async () => {
       postBtn.onclick = async () => {
         buttonContainer.remove();
         statusLine.textContent = "Posting...";
-        await postProcessedData(
-          holdings,
-          classificationsResult.classifications,
-        );
+        await postProcessedData(holdings, classifications, accounts);
       };
 
       buttonContainer.appendChild(cancelBtn);
@@ -127,7 +128,7 @@ button.onclick = async () => {
       return;
     }
 
-    await postProcessedData(holdings, classificationsResult.classifications);
+    await postProcessedData(holdings, classifications, accounts);
   } catch (e) {
     const msg = e instanceof Error ? e.message : JSON.stringify(e);
     statusLine.textContent = msg;
@@ -140,11 +141,12 @@ button.onclick = async () => {
 async function postProcessedData(
   holdings: HoldingEntry[],
   classifications: Classifications,
+  accounts: Account[],
 ) {
   try {
     const message: PostDataRequest = {
       type: "POST_DATA_REQUEST",
-      data: { holdings, classifications },
+      data: { holdings, classifications, accounts },
     };
     const response = (await chrome.runtime.sendMessage(
       message,

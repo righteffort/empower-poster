@@ -73,16 +73,17 @@ async function postData(
     if (!postUrl) {
       throw new Error("POST URL not configured, can't post data");
     }
-    if (!data.holdings || !data.classifications) {
+    if (!data.holdings || !data.classifications || !data.accounts) {
       console.log(`data=${JSON.stringify(data)}`);
       throw new Error(
-        "holdings or classifications missing from processed data",
+        "holdings, classifications, or accounts missing from processed data",
       );
     }
     const payload: PostPayload = {
-      version: "0.3",
+      version: { major: 0, minor: 4 },
       holdings: data.holdings,
       classifications: data.classifications,
+      accounts: data.accounts,
     };
     const options = {
       method: "POST",
