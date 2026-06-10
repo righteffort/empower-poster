@@ -4,6 +4,7 @@ import type {
   PostResponse,
   HoldingEntry,
   Classifications,
+  Account,
 } from "@righteffort/empower-poster-types";
 
 // TODO: remove
@@ -79,6 +80,7 @@ const ASSET_SHEET_NAME = "Asset Setup";
 function updateSpreadsheet(
   holdingsArray: HoldingEntry[],
   classifications: Classifications,
+  accounts: Account[]
 ) {
   const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
   const assetsSheet = spreadsheet.getSheetByName(ASSET_SHEET_NAME);
@@ -189,17 +191,18 @@ function ensureTableRowCount(
 // @ts-expect-error: Used from Apps Script
 function doPost(event: GoogleAppsScript.Events.DoPost) {
   try {
-    const { version, holdings, classifications } = JSON.parse(
+    const { version: {major, minor}, holdings, classifications, accounts } = JSON.parse(
       event.postData.contents,
     ) as PostPayload;
-
-    const supportedVersion = "0.3";
-    if (version !== supportedVersion) {
+    console.log(`API version: ${major}.${minor}`);
+    const supported = { major: 0, minor: 4 };
+    if (major !== supported.major || minor < supported.minor) {
       throw new Error(
-        `data version ${version} not supported, expected ${supportedVersion}`,
+        `data version ${major}.${minor} not supported, expected at least ${supported.major}.${supported.minor}`,
       );
     }
-    updateSpreadsheet(holdings, classifications);
+
+    updateSpreadsheet(holdings, classifications, accounts);
     const responseBody: PostResponse = {
       success: true,
       message: "Data received",
