@@ -7,13 +7,28 @@ import type {
   Account,
 } from "@righteffort/empower-poster-types";
 
-// TODO: remove
-// @ts-expect-error: Used from Apps Script
-function playground() {
+// import {sheets_v4} from '@googleapis/sheets';
+
+import { makeTableHelper } from "./sheet-utils.js";
+
+export function playground() {
   const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = spreadsheet.getSheetByName("Sheet1");
   if (sheet == null) {
     throw new Error("Sheet1 not found");
+  }
+  const helper = makeTableHelper(spreadsheet.getId(), sheet, "Table2");
+  if (helper == null) {
+    throw new Error("Sheet1:Table2 not found");
+  }
+  let range = helper.getSheetRangeForTableColumn("xyz");
+  if (range == null) {
+    throw new Error("Sheet1:Table2:? not found");
+  }
+  console.log(JSON.stringify(range.getValues(), null, 2));
+  range = helper.getSheetRangeForTableColumn("xyz");
+  if (range == null) {
+    throw new Error("Sheet1:Table2:xyz not found");
   }
   const table =
     getTable(spreadsheet.getId(), "Sheet1", "Table2") ??
@@ -55,6 +70,7 @@ function getTable(
     }),
   ) as Sheets.SafeTable;
 }
+
 function getTableGridRange(table: Sheets.SafeTable): Sheets.SafeGridRange {
   const gridRange = Object.fromEntries(
     Object.entries(table.range).map(([k, v]) => {
@@ -106,8 +122,10 @@ function updateSpreadsheet(
     HOLDINGS_TABLE_NAME,
   ) as Sheets.SafeTable;
   holdingsTableGridRange = getTableGridRange(holdingsTable);
+  // const columnNameToIndex = new Map(holdingsTable.columnProperties.map((p: sheets_v4.Schema$TableColumnProperties) => [p.columnName, p.columnIndex]));
+
   // TODO: factor this out into a function
-  const range = holdingsSheet.getRange(
+  const holdingsRange = holdingsSheet.getRange(
     (holdingsTableGridRange.startRowIndex as number) + 2,
     (holdingsTableGridRange.startColumnIndex as number) + 1,
     (holdingsTableGridRange.endRowIndex as number) -
@@ -116,18 +134,16 @@ function updateSpreadsheet(
     (holdingsTableGridRange.endColumnIndex as number) -
       (holdingsTableGridRange.startColumnIndex as number),
   );
-  if (range.getNumRows() < holdings.size) {
+
+  if (holdingsRange.getNumRows() < holdings.size) {
     throw new Error("failed to make space for holdings, or else a logic bug");
   }
   // get column headers please
-  let values = range.getValues();
-  for (let i = 0; i < Math.max(values.length, holdings.size); i++) {
-    // do something here
-    values = [[7]];
-  }
-  // Write it back
+  const values = holdingsRange.getValues();
   // Stomp on Account (needs a lookup), Asset, Shares; and for manual holdings, Price.
-  // For everything else just write back what, but clear Account and Asset for excess rows (e.g. table is larger than necessary)
+  // For everything else just write back what was there, but clear Account and Asset for excess rows (e.g. table is larger than necessary)
+  // Write it back
+  holdingsRange.setValues(values);
   console.log(Object.entries(classifications).length);
   let lock: GoogleAppsScript.Lock.Lock | undefined;
   try {
