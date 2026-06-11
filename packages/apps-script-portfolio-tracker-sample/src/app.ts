@@ -7,7 +7,6 @@ import type {
   Account,
 } from "@righteffort/empower-poster-types";
 
-// import {sheets_v4} from '@googleapis/sheets';
 
 import { makeTableHelper } from "./sheet-utils.js";
 

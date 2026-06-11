@@ -4,7 +4,7 @@
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "skipLibCheck": true,
-    "target": "ES6",
+    "target": "ES2022",
     "lib": ["es2017"],
     "types": ["google-apps-script"],
     "noImplicitAny": true,

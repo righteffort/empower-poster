@@ -1,7 +1,7 @@
 {
   "name": "apps-script-portfolio-tracker-sample",
   "private": true,
-  "version": "0.2.4",
+  "version": "0.2.7",
   "description": "Sample Apps Script Web App for use with Portfolio Tracker and Empower Poster extension",
   "author": "Ted Romer <tromer@gmail.com>",
   "license": "MIT",
