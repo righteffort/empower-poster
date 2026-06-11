@@ -1,4 +1,4 @@
-//! Make changes in https://github.com/righteffort/empower-poster/packages/apps-script-sample/src/
+// Make changes in https://github.com/righteffort/empower-poster/packages/apps-script-sample/src/
 
 import type {
   PostPayload,
@@ -73,8 +73,7 @@ function writeAccounts(
   }
 }
 
-// @ts-expect-error: Used from Apps Script
-function doPost(e: GoogleAppsScript.Events.DoPost) {
+export function doPost(e: GoogleAppsScript.Events.DoPost) {
   try {
     const {
       version: { major, minor },
@@ -131,4 +130,9 @@ function doPost(e: GoogleAppsScript.Events.DoPost) {
       JSON.stringify(responseBody),
     ).setMimeType(ContentService.MimeType.JSON);
   }
+}
+
+// Placeholder to demonstrate unit testing.
+export function placeholder(): boolean {
+  return true;
 }
