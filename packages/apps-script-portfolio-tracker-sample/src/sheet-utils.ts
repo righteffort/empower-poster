@@ -1,5 +1,3 @@
-// import {sheets_v4} from '@googleapis/sheets';
-
 export class OurError extends Error {}
 
 /**
