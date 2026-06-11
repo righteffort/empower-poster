@@ -16,19 +16,20 @@ export function playground() {
   if (sheet == null) {
     throw new Error("Sheet1 not found");
   }
-  const helper = makeTableHelper(spreadsheet.getId(), sheet, "Table2");
+  const helper = makeTableHelper(spreadsheet.getId(), sheet, "Table1");
   if (helper == null) {
-    throw new Error("Sheet1:Table2 not found");
+    throw new Error("Sheet1:Table1 not found");
   }
-  let range = helper.getSheetRangeForTableColumn("xyz");
+  let range = helper.getSheetRangeForTableColumn("a");
   if (range == null) {
-    throw new Error("Sheet1:Table2:? not found");
+    throw new Error("Sheet1:Table1:a not found");
   }
   console.log(JSON.stringify(range.getValues(), null, 2));
-  range = helper.getSheetRangeForTableColumn("xyz");
+  range = helper.getSheetRangeForTableColumn("d");
   if (range == null) {
-    throw new Error("Sheet1:Table2:xyz not found");
+    throw new Error("Sheet1:Table1:d not found");
   }
+  console.log(JSON.stringify(range.getValues(), null, 2));
   const table =
     getTable(spreadsheet.getId(), "Sheet1", "Table2") ??
     (() => {
@@ -38,9 +39,9 @@ export function playground() {
   console.log(tableRange);
   ensureTableRowCount(sheet, tableRange, 13);
   const newTable =
-    getTable(spreadsheet.getId(), "Sheet1", "Table2") ??
+    getTable(spreadsheet.getId(), "Sheet1", "Table1") ??
     (() => {
-      throw new Error("Sheet1:Table2 not found");
+      throw new Error("Sheet1:Table1 not found");
     })();
   const newHoldingsTableRange = getTableGridRange(newTable);
   console.log(newHoldingsTableRange);
@@ -53,7 +54,7 @@ function getTable(
 ): Sheets.SafeTable | undefined {
   const gspreadsheet = Sheets.Spreadsheets.get(spreadsheetId, {
     fields:
-      "sheets(properties(sheetId,gridProperties(rowCount,columnCount)),tables(name,range,columnProperties))",
+      "sheets(properties(sheetId,title,gridProperties(rowCount,columnCount)),tables(name,range,columnProperties))",
   });
   const gsheet = gspreadsheet.sheets?.filter(
     (s) => s.properties?.title === sheetTitle,
