@@ -10,18 +10,19 @@
   ],
   "type": "module",
   "scripts": {
-    "build": "rollup --config --no-treeshake && cp appsscript.json dist/",
+    "build": "rm -rf dist && rollup --config --no-treeshake && cp appsscript.json dist/",
     "build:check": "yarn check && yarn build",
     "build:redeploy": "yarn build:check && yarn redeploy",
     "redeploy": "./clasp-redeploy.sh",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint '{.,src,tests}/**/*.{js,ts}'",
+    "lint": "eslint './*.{js,ts}' '{src,tests}/**/*.{js,ts}'",
     "lint:fix": "yarn lint --fix",
-    "format:check": "prettier '{.,src,tests}/**/*.{js,ts}' --check",
-    "format": "prettier '{.,src,tests}/**/*.{js,ts}' --write",
+    "format:check": "prettier './*.{js,ts}' '{src,tests}/**/*.{js,ts}' --check",
+    "format": "prettier './*.{js.ts}' '{src,tests}/**/*.{js,ts}' --write",
     "check": "yarn typecheck && yarn lint && yarn format:check",
     "fix": "yarn lint:fix && yarn format",
-    "test": "echo 'Placeholder in case we ever add tests'",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "ci": "yarn check && yarn test"
   },
   "devDependencies": {
@@ -32,7 +33,9 @@
     "eslint": "^10.1.0",
     "prettier": "^3.8.1",
     "rollup": "^4.61.1",
+    "tslib": "^2.8.1",
     "typescript": "^6.0.2",
-    "typescript-eslint": "^8.57.2"
+    "typescript-eslint": "^8.57.2",
+    "vitest": "^4.1.8"
   }
 }
