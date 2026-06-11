@@ -25,7 +25,7 @@
     "dist": "rm -f dist.zip && yarn build && cd dist && zip -r ../dist.zip *",
     "clean": "rm -rf dist",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint '{.,src,tests}/**/*.{js,ts}'",
+    "lint": "eslint './*.{js,ts}' '{src,tests}/**/*.{js,ts}'",
     "lint:fix": "yarn lint --fix",
     "format:check": "prettier --no-error-on-unmatched-pattern './*.{js,ts}' '{src,tests}/**/*.{js,ts}' --check",
     "format": "prettier --no-error-on-unmatched-pattern './*.{js,ts}' '{src,tests}/**/*.{js,ts}' --write",

@@ -80,8 +80,9 @@ const ASSET_SHEET_NAME = "Asset Setup";
 function updateSpreadsheet(
   holdingsArray: HoldingEntry[],
   classifications: Classifications,
-  accounts: Account[]
+  accounts: Account[],
 ) {
+  console.log(`${accounts.length} accounts`); // TODO remove
   const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
   const assetsSheet = spreadsheet.getSheetByName(ASSET_SHEET_NAME);
   const holdingsSheet = spreadsheet.getSheetByName(HOLDINGS_SHEET_NAME);
@@ -191,9 +192,12 @@ function ensureTableRowCount(
 // @ts-expect-error: Used from Apps Script
 function doPost(event: GoogleAppsScript.Events.DoPost) {
   try {
-    const { version: {major, minor}, holdings, classifications, accounts } = JSON.parse(
-      event.postData.contents,
-    ) as PostPayload;
+    const {
+      version: { major, minor },
+      holdings,
+      classifications,
+      accounts,
+    } = JSON.parse(event.postData.contents) as PostPayload;
     console.log(`API version: ${major}.${minor}`);
     const supported = { major: 0, minor: 4 };
     if (major !== supported.major || minor < supported.minor) {
@@ -219,4 +223,9 @@ function doPost(event: GoogleAppsScript.Events.DoPost) {
       JSON.stringify(responseBody),
     ).setMimeType(ContentService.MimeType.JSON);
   }
+}
+
+// Placeholder to demonstrate unit testing.
+export function placeholder(): boolean {
+  return true;
 }

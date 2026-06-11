@@ -2,15 +2,15 @@ import { nodeResolve } from "@rollup/plugin-node-resolve";
 import typescript from "@rollup/plugin-typescript";
 
 export default {
-  input: "src/app.ts",
+  input: "src/main.ts",
   output: {
-    dir: "dist",
-    format: "cjs",
+    file: "dist/app.js",
+    format: "esm",
   },
   plugins: [
     nodeResolve({
       extensions: [".ts", ".js"],
     }),
-    typescript(),
+    typescript({ tsconfig: "./tsconfig.build.json" }),
   ],
 };
