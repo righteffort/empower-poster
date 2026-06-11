@@ -30,7 +30,6 @@ interface GTable {
   range: {
     endColumnIndex: number;
     endRowIndex: number;
-    sheetId: number;
     startColumnIndex: number;
     startRowIndex: number;
   };
@@ -63,7 +62,7 @@ class TableHelper {
     const sheetTitle = sheet.getSheetName();
     const _gspreadsheet = Sheets.Spreadsheets.get(spreadsheetId, {
       fields:
-        "sheets(properties(sheetId,gridProperties(rowCount,columnCount)),tables(name,range,columnProperties))",
+        "sheets(properties(sheetId,title,gridProperties(rowCount,columnCount)),tables(name,range,columnProperties))",
     });
     const _gsheet = _gspreadsheet.sheets?.filter(
       (s) => s.properties?.title === sheetTitle,
@@ -77,10 +76,10 @@ class TableHelper {
     const _gproperties = _gsheet?.properties ?? fail();
     this.gsheet = {
       properties: {
-        sheetId: _gsheet?.properties?.sheetId ?? fail(),
+        sheetId: _gsheet?.properties?.sheetId ?? 0,
         gridProperties: {
-          rowCount: _gproperties.gridProperties?.rowCount ?? fail(),
-          columnCount: _gproperties.gridProperties?.columnCount ?? fail(),
+          rowCount: _gproperties.gridProperties?.rowCount ?? 0,
+          columnCount: _gproperties.gridProperties?.columnCount ?? 0,
         },
       },
       tables: [],
@@ -94,7 +93,7 @@ class TableHelper {
     };
     const columnProperties = _gtable.columnProperties?.map((p) => {
       return {
-        columnIndex: p?.columnIndex ?? fail(),
+        columnIndex: p?.columnIndex ?? 0,
         columnName: p?.columnName ?? fail(),
       };
     });
@@ -102,11 +101,10 @@ class TableHelper {
       columnProperties: columnProperties ?? fail(),
       name: _gtable.name ?? fail(),
       range: {
-        endColumnIndex: _gtable.range?.endColumnIndex ?? fail(),
-        endRowIndex: _gtable.range?.endRowIndex ?? fail(),
-        sheetId: _gtable.range?.sheetId ?? fail(),
-        startColumnIndex: _gtable.range?.startColumnIndex ?? fail(),
-        startRowIndex: _gtable.range?.startRowIndex ?? fail(),
+        endColumnIndex: _gtable.range?.endColumnIndex ?? 0,
+        endRowIndex: _gtable.range?.endRowIndex ?? 0,
+        startColumnIndex: _gtable.range?.startColumnIndex ?? 0,
+        startRowIndex: _gtable.range?.startRowIndex ?? 0,
       },
     };
     this.gsheet.tables = [this.gtable];
