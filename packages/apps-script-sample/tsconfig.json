@@ -21,10 +21,10 @@
     "noUncheckedIndexedAccess": true,
     "noImplicitOverride": true,
     "noPropertyAccessFromIndexSignature": true,
-    "rootDir": "./src",
-    "outDir": "./dist"
+    "noEmit": true
   },
   "include": [
     "src/**/*.ts",
+    "tests/**/*.ts",
   ]
 }
