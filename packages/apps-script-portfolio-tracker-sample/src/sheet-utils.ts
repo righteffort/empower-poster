@@ -46,12 +46,17 @@ interface GSheet {
   tables: GTable[];
 }
 
-class TableHelper {
-  spreadsheetId: string;
-  sheet: GoogleAppsScript.Spreadsheet.Sheet;
+interface TableHelperState {
   gsheet: GSheet;
   gtable: GTable;
   columnNameToIndex: Map<string, number>;
+}
+
+class TableHelper {
+  private spreadsheetId: string;
+  private sheet: GoogleAppsScript.Spreadsheet.Sheet;
+  private tableName: string;
+  private state: TableHelperState;
   constructor(
     spreadsheetId: string,
     sheet: GoogleAppsScript.Spreadsheet.Sheet,
@@ -59,11 +64,15 @@ class TableHelper {
   ) {
     this.spreadsheetId = spreadsheetId;
     this.sheet = sheet;
-    const sheetTitle = sheet.getSheetName();
+    this.tableName = tableName;
+    this.state = TableHelper.getState(this.spreadsheetId, this.sheet, this.tableName);
+  }
+  private static getState(spreadsheetId: string, sheet: GoogleAppsScript.Spreadsheet.Sheet, tableName: string): TableHelperState {
     const _gspreadsheet = Sheets.Spreadsheets.get(spreadsheetId, {
       fields:
         "sheets(properties(sheetId,title,gridProperties(rowCount,columnCount)),tables(name,range,columnProperties))",
     });
+    const sheetTitle = sheet.getSheetName();
     const _gsheet = _gspreadsheet.sheets?.filter(
       (s) => s.properties?.title === sheetTitle,
     )[0];
@@ -74,7 +83,7 @@ class TableHelper {
       throw new OurError(`Incomplete sheet ${sheetTitle}`);
     };
     const _gproperties = _gsheet?.properties ?? fail();
-    this.gsheet = {
+    const gsheet: GSheet = {
       properties: {
         sheetId: _gsheet?.properties?.sheetId ?? 0,
         gridProperties: {
@@ -97,7 +106,7 @@ class TableHelper {
         columnName: p?.columnName ?? fail(),
       };
     });
-    this.gtable = {
+    const gtable: GTable = {
       columnProperties: columnProperties ?? fail(),
       name: _gtable.name ?? fail(),
       range: {
@@ -107,22 +116,69 @@ class TableHelper {
         startRowIndex: _gtable.range?.startRowIndex ?? 0,
       },
     };
-    this.gsheet.tables = [this.gtable];
-    this.columnNameToIndex = new Map<string, number>(
-      this.gtable.columnProperties.map((p) => [p.columnName, p.columnIndex]),
+    gsheet.tables.push(gtable);
+    const columnNameToIndex = new Map<string, number>(
+      gtable.columnProperties.map((p) => [p.columnName, p.columnIndex]),
     );
+    return {gsheet, gtable, columnNameToIndex};
   }
+
+  /**
+   * Make sure the table has at least rowsNeeded rows
+   */
+  ensureTableRowCount(
+    rowsNeeded: number,
+  ) {
+    const gridRange = this.state.gtable.range;
+    // Convert to SpreadsheetApp: 1-indexed and closed-closed ranges
+    const firstRow = gridRange.startRowIndex + 2; // +1 for header row
+    const lastRow = gridRange.endRowIndex;
+    const [firstColumn, lastColumn] = [
+      gridRange.startColumnIndex + 1,
+      gridRange.endColumnIndex,
+    ];
+    let numRows = lastRow - firstRow + 1;
+    const numColumns = lastColumn - firstColumn + 1;
+    // Extend the table until it will accomodate all the rows
+    let totalRowsToAdd = rowsNeeded - numRows;
+    while (totalRowsToAdd > 0) {
+      const rowsToAdd = Math.min(totalRowsToAdd, numRows);
+      console.log(
+	`inserting here: ${JSON.stringify({ firstRow, firstColumn, rowsToAdd, numColumns }, null, 2)}`,
+      );
+      const range = this.sheet.getRange(
+	firstRow,
+	firstColumn,
+	rowsToAdd,
+	numColumns,
+      );
+      range.insertCells(SpreadsheetApp.Dimension.ROWS);
+      numRows += rowsToAdd;
+      totalRowsToAdd -= rowsToAdd;
+    }
+    // Refresh our state after mutation
+    this.state = TableHelper.getState(this.spreadsheetId, this.sheet, this.tableName);
+    // Check whether we actually achieved the goal
+    const newGridRange = this.state.gtable.range;
+    if (newGridRange.endRowIndex - (newGridRange.startRowIndex + 1) < rowsNeeded) {
+      throw new OurError(`Failed to enlarge ${this.sheet.getSheetName()}.${this.tableName} to ${rowsNeeded} data rows`);
+    }
+  }
+
+  /**
+   * Get an Apps Script Sheet range for the data with the given columnName.
+   */
   getSheetRangeForTableColumn(
     columnName: string,
   ): GoogleAppsScript.Spreadsheet.Range | undefined {
-    const tcolumnIndex = this.columnNameToIndex.get(columnName);
+    const tcolumnIndex = this.state.columnNameToIndex.get(columnName);
     if (tcolumnIndex == null) {
       return;
     }
-    const row = this.gtable.range.startRowIndex + 2;
-    const column = this.gtable.range.startColumnIndex + tcolumnIndex + 1;
+    const row = this.state.gtable.range.startRowIndex + 2;
+    const column = this.state.gtable.range.startColumnIndex + tcolumnIndex + 1;
     const numRows =
-      this.gtable.range.endRowIndex - (this.gtable.range.startRowIndex + 1);
+      this.state.gtable.range.endRowIndex - (this.state.gtable.range.startRowIndex + 1);
     return this.sheet.getRange(row, column, numRows, 1);
   }
 }
