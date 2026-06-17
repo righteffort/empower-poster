@@ -19,74 +19,38 @@ export function playground() {
   if (helper == null) {
     throw new Error("Sheet1:Table1 not found");
   }
-  let range = helper.getSheetRangeForTableColumn("a");
+  let range = helper.getColumnRange("a");
   if (range == null) {
     throw new Error("Sheet1:Table1:a not found");
   }
-  console.log(JSON.stringify(range.getValues(), null, 2));
-  range = helper.getSheetRangeForTableColumn("d");
+  console.log("column a", JSON.stringify(range.getValues(), null, 2));
+  range = helper.getColumnRange("d");
   if (range == null) {
     throw new Error("Sheet1:Table1:d not found");
   }
-  console.log(JSON.stringify(range.getValues(), null, 2));
-  const table =
-    getTable(spreadsheet.getId(), "Sheet1", "Table2") ??
+  console.log("column d", JSON.stringify(range.getValues(), null, 2));
+  const helper2 =
+    makeTableHelper(spreadsheet.getId(), sheet, "Table2") ??
     (() => {
       throw new Error("Sheet1:Table2 not found");
     })();
-  const tableRange = getTableGridRange(table);
-  console.log(tableRange);
-  ensureTableRowCount(sheet, tableRange, 13);
-  const newTable =
-    getTable(spreadsheet.getId(), "Sheet1", "Table1") ??
+  let range2 =
+    helper2.getColumnRange("g") ??
     (() => {
-      throw new Error("Sheet1:Table1 not found");
+      throw new Error("Sheet1:Table2:g not found");
     })();
-  const newHoldingsTableRange = getTableGridRange(newTable);
-  console.log(newHoldingsTableRange);
-}
-
-function getTable(
-  spreadsheetId: string,
-  sheetTitle: string,
-  tableName: string,
-): Sheets.SafeTable | undefined {
-  const gspreadsheet = Sheets.Spreadsheets.get(spreadsheetId, {
-    fields:
-      "sheets(properties(sheetId,title,gridProperties(rowCount,columnCount)),tables(name,range,columnProperties))",
-  });
-  const gsheet = gspreadsheet.sheets?.filter(
-    (s) => s.properties?.title === sheetTitle,
-  )[0];
-  const unsafeTable = gsheet?.tables?.filter((t) => t.name === tableName)[0];
-  if (unsafeTable === undefined) {
-    return unsafeTable;
-  }
-  return Object.fromEntries(
-    Object.entries(unsafeTable).map(([k, v]) => {
-      if (v == null) throw new Error(`${k} is null/undefined`);
-      return [k, v];
-    }),
-  ) as Sheets.SafeTable;
-}
-
-function getTableGridRange(table: Sheets.SafeTable): Sheets.SafeGridRange {
-  const gridRange = Object.fromEntries(
-    Object.entries(table.range).map(([k, v]) => {
-      if (v == null) throw new Error(`${k} is null/undefined`);
-      return [k, v];
-    }),
-  ) as Sheets.SafeGridRange;
-  // Fail if gridRange has zero data rows or zero data columns
-  if (
-    gridRange.startRowIndex + 1 >= gridRange.endRowIndex || // +1 for header row
-    gridRange.startColumnIndex >= gridRange.endColumnIndex
-  ) {
-    throw new Error(
-      `Table ${table.name} Can't deal with gridRange of ${JSON.stringify(gridRange)}`,
-    );
-  }
-  return gridRange;
+  console.log(
+    `range2 before: ${JSON.stringify({ row: range2.getRow(), column: range2.getColumn(), numRows: range2.getNumRows(), numColumns: range2.getNumColumns() })}`,
+  );
+  helper2.ensureRowCount(13);
+  range2 =
+    helper2.getColumnRange("g") ??
+    (() => {
+      throw new Error("Sheet1:Table2:g not found");
+    })();
+  console.log(
+    `range2 after: ${JSON.stringify({ row: range2.getRow(), column: range2.getColumn(), numRows: range2.getNumRows(), numColumns: range2.getNumColumns() })}`,
+  );
 }
 
 const HOLDINGS_SHEET_NAME = "Holdings";
@@ -106,40 +70,18 @@ function updateSpreadsheet(
     throw new Error("classifications and/or holdings sheet missing");
   }
   const holdings = new Map(holdingsArray.map((h) => [h.ticker, h]));
-  let holdingsTable =
-    getTable(spreadsheet.getId(), HOLDINGS_SHEET_NAME, HOLDINGS_TABLE_NAME) ??
+  const holdingsTableHelper =
+    makeTableHelper(spreadsheet.getId(), holdingsSheet, HOLDINGS_TABLE_NAME) ??
     (() => {
       throw new Error(
         `${HOLDINGS_SHEET_NAME}:${HOLDINGS_TABLE_NAME} not found`,
       );
     })();
-  let holdingsTableGridRange = getTableGridRange(holdingsTable);
-  ensureTableRowCount(holdingsSheet, holdingsTableGridRange, holdings.size);
-  holdingsTable = getTable(
-    spreadsheet.getId(),
-    HOLDINGS_SHEET_NAME,
-    HOLDINGS_TABLE_NAME,
-  ) as Sheets.SafeTable;
-  holdingsTableGridRange = getTableGridRange(holdingsTable);
-  // const columnNameToIndex = new Map(holdingsTable.columnProperties.map((p: sheets_v4.Schema$TableColumnProperties) => [p.columnName, p.columnIndex]));
-
-  // TODO: factor this out into a function
-  const holdingsRange = holdingsSheet.getRange(
-    (holdingsTableGridRange.startRowIndex as number) + 2,
-    (holdingsTableGridRange.startColumnIndex as number) + 1,
-    (holdingsTableGridRange.endRowIndex as number) -
-      (holdingsTableGridRange.startRowIndex as number) -
-      1,
-    (holdingsTableGridRange.endColumnIndex as number) -
-      (holdingsTableGridRange.startColumnIndex as number),
-  );
-
-  if (holdingsRange.getNumRows() < holdings.size) {
-    throw new Error("failed to make space for holdings, or else a logic bug");
-  }
+  holdingsTableHelper.ensureRowCount(holdings.size);
+  const holdingsRange = holdingsTableHelper.getRange();
   // get column headers please
   const values = holdingsRange.getValues();
-  // Stomp on Account (needs a lookup), Asset, Shares; and for manual holdings, Price.
+  // TODO: Do something for realz! Stomp on Account (needs a lookup), Asset, Shares; and for manual holdings, Price.
   // For everything else just write back what was there, but clear Account and Asset for excess rows (e.g. table is larger than necessary)
   // Write it back
   holdingsRange.setValues(values);
@@ -154,58 +96,7 @@ function updateSpreadsheet(
   }
 }
 
-/**
- * Make sure the table has at least rowsNeeded rows
- */
-function ensureTableRowCount(
-  sheet: GoogleAppsScript.Spreadsheet.Sheet,
-  gridRange: Sheets.SafeGridRange,
-  rowsNeeded: number,
-) {
-  // Convert to SpreadsheetApp: 1-indexed and closed-closed ranges
-  const holdingsFirstRow = gridRange.startRowIndex + 2; // +1 for header row
-  const holdingsLastRow = gridRange.endRowIndex;
-  const [holdingsFirstColumn, holdingsLastColumn] = [
-    gridRange.startColumnIndex + 1,
-    gridRange.endColumnIndex,
-  ];
-  let holdingsNumRows = holdingsLastRow - holdingsFirstRow + 1;
-  const holdingsNumColumns = holdingsLastColumn - holdingsFirstColumn + 1;
-  console.log(
-    JSON.stringify(
-      {
-        holdingsFirstRow,
-        holdingsLastRow,
-        holdingsNumRows,
-        holdingsFirstColumn,
-        holdingsLastColumn,
-        holdingsNumColumns,
-      },
-      null,
-      2,
-    ),
-  );
-  // Extend the table until it will accomodate all the rows
-  let totalRowsToAdd = rowsNeeded - holdingsNumRows;
-  while (totalRowsToAdd > 0) {
-    const rowsToAdd = Math.min(totalRowsToAdd, holdingsNumRows);
-    console.log(
-      `inserting here: ${JSON.stringify({ holdingsFirstRow, holdingsFirstColumn, rowsToAdd, holdingsNumColumns }, null, 2)}`,
-    );
-    const range = sheet.getRange(
-      holdingsFirstRow,
-      holdingsFirstColumn,
-      rowsToAdd,
-      holdingsNumColumns,
-    );
-    range.insertCells(SpreadsheetApp.Dimension.ROWS);
-    holdingsNumRows += rowsToAdd;
-    totalRowsToAdd -= rowsToAdd;
-  }
-}
-
-// @ts-expect-error: Used from Apps Script
-function doPost(event: GoogleAppsScript.Events.DoPost) {
+export function doPost(event: GoogleAppsScript.Events.DoPost) {
   try {
     const {
       version: { major, minor },
@@ -238,9 +129,4 @@ function doPost(event: GoogleAppsScript.Events.DoPost) {
       JSON.stringify(responseBody),
     ).setMimeType(ContentService.MimeType.JSON);
   }
-}
-
-// Placeholder to demonstrate unit testing.
-export function placeholder(): boolean {
-  return true;
 }

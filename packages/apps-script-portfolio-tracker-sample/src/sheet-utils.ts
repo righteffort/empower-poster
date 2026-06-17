@@ -2,8 +2,6 @@ export class OurError extends Error {}
 
 /**
   Convenience functions for operating on Tables.
-
-  Note that if any table properties change the caller needs to create a new instance.
  */
 export function makeTableHelper(
   spreadsheetId: string,
@@ -124,6 +122,15 @@ class TableHelper {
         startRowIndex: _gtable.range?.startRowIndex ?? 0,
       },
     };
+    if (
+      gtable.range.startRowIndex + 1 >= gtable.range.endRowIndex || // +1 for header row
+      gtable.range.startColumnIndex >= gtable.range.endColumnIndex
+    ) {
+      throw new OurError(
+        `Table ${sheetTitle}.${tableName} has zero data rows or zero columns`,
+      );
+    }
+
     gsheet.tables.push(gtable);
     const columnNameToIndex = new Map<string, number>(
       gtable.columnProperties.map((p) => [p.columnName, p.columnIndex]),
@@ -134,7 +141,7 @@ class TableHelper {
   /**
    * Make sure the table has at least rowsNeeded rows
    */
-  ensureTableRowCount(rowsNeeded: number) {
+  ensureRowCount(rowsNeeded: number) {
     const gridRange = this.state.gtable.range;
     // Convert to SpreadsheetApp: 1-indexed and closed-closed ranges
     const firstRow = gridRange.startRowIndex + 2; // +1 for header row
@@ -145,6 +152,12 @@ class TableHelper {
     ];
     let numRows = lastRow - firstRow + 1;
     const numColumns = lastColumn - firstColumn + 1;
+    if (numRows < 1 || numColumns < 1) {
+      // This is redundant with the check in the constructor.
+      throw new Error(
+        `Cannot extend table with ${numRows} data rows and ${numColumns} columns`,
+      );
+    }
     // Extend the table until it will accomodate all the rows
     let totalRowsToAdd = rowsNeeded - numRows;
     while (totalRowsToAdd > 0) {
@@ -181,20 +194,39 @@ class TableHelper {
   }
 
   /**
-   * Get an Apps Script Sheet range for the data with the given columnName.
+   * Returns SpreadsheetApp Range for the data with the given columnName.
    */
-  getSheetRangeForTableColumn(
+  getColumnRange(
     columnName: string,
   ): GoogleAppsScript.Spreadsheet.Range | undefined {
     const tcolumnIndex = this.state.columnNameToIndex.get(columnName);
     if (tcolumnIndex == null) {
       return;
     }
-    const row = this.state.gtable.range.startRowIndex + 2;
-    const column = this.state.gtable.range.startColumnIndex + tcolumnIndex + 1;
-    const numRows =
-      this.state.gtable.range.endRowIndex -
-      (this.state.gtable.range.startRowIndex + 1);
-    return this.sheet.getRange(row, column, numRows, 1);
+    const gridRange = this.state.gtable.range;
+    const startColumnIndex = gridRange.startColumnIndex + tcolumnIndex;
+    return this.getRangeForColumns(startColumnIndex, startColumnIndex + 1);
+  }
+
+  /*
+   * Returns SpreadsheetApp Range for the table data
+   */
+  getRange(): GoogleAppsScript.Spreadsheet.Range {
+    const gridRange = this.state.gtable.range;
+    return this.getRangeForColumns(
+      gridRange.startColumnIndex + 1,
+      gridRange.endColumnIndex - gridRange.startColumnIndex,
+    );
+  }
+
+  private getRangeForColumns(startColumnIndex: number, endColumnIndex: number) {
+    const gridRange = this.state.gtable.range;
+    const gridStartDataRowIndex = gridRange.startRowIndex + 1; // For header row
+    return this.sheet.getRange(
+      gridStartDataRowIndex + 1,
+      startColumnIndex + 1,
+      gridRange.endRowIndex - gridStartDataRowIndex,
+      endColumnIndex - startColumnIndex,
+    );
   }
 }
