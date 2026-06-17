@@ -7,7 +7,6 @@ import type {
   Account,
 } from "@righteffort/empower-poster-types";
 
-
 import { makeTableHelper } from "./sheet-utils.js";
 
 export function playground() {

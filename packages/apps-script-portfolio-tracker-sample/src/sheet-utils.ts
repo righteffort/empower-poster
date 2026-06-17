@@ -65,9 +65,17 @@ class TableHelper {
     this.spreadsheetId = spreadsheetId;
     this.sheet = sheet;
     this.tableName = tableName;
-    this.state = TableHelper.getState(this.spreadsheetId, this.sheet, this.tableName);
+    this.state = TableHelper.getState(
+      this.spreadsheetId,
+      this.sheet,
+      this.tableName,
+    );
   }
-  private static getState(spreadsheetId: string, sheet: GoogleAppsScript.Spreadsheet.Sheet, tableName: string): TableHelperState {
+  private static getState(
+    spreadsheetId: string,
+    sheet: GoogleAppsScript.Spreadsheet.Sheet,
+    tableName: string,
+  ): TableHelperState {
     const _gspreadsheet = Sheets.Spreadsheets.get(spreadsheetId, {
       fields:
         "sheets(properties(sheetId,title,gridProperties(rowCount,columnCount)),tables(name,range,columnProperties))",
@@ -120,15 +128,13 @@ class TableHelper {
     const columnNameToIndex = new Map<string, number>(
       gtable.columnProperties.map((p) => [p.columnName, p.columnIndex]),
     );
-    return {gsheet, gtable, columnNameToIndex};
+    return { gsheet, gtable, columnNameToIndex };
   }
 
   /**
    * Make sure the table has at least rowsNeeded rows
    */
-  ensureTableRowCount(
-    rowsNeeded: number,
-  ) {
+  ensureTableRowCount(rowsNeeded: number) {
     const gridRange = this.state.gtable.range;
     // Convert to SpreadsheetApp: 1-indexed and closed-closed ranges
     const firstRow = gridRange.startRowIndex + 2; // +1 for header row
@@ -144,24 +150,33 @@ class TableHelper {
     while (totalRowsToAdd > 0) {
       const rowsToAdd = Math.min(totalRowsToAdd, numRows);
       console.log(
-	`inserting here: ${JSON.stringify({ firstRow, firstColumn, rowsToAdd, numColumns }, null, 2)}`,
+        `inserting here: ${JSON.stringify({ firstRow, firstColumn, rowsToAdd, numColumns }, null, 2)}`,
       );
       const range = this.sheet.getRange(
-	firstRow,
-	firstColumn,
-	rowsToAdd,
-	numColumns,
+        firstRow,
+        firstColumn,
+        rowsToAdd,
+        numColumns,
       );
       range.insertCells(SpreadsheetApp.Dimension.ROWS);
       numRows += rowsToAdd;
       totalRowsToAdd -= rowsToAdd;
     }
     // Refresh our state after mutation
-    this.state = TableHelper.getState(this.spreadsheetId, this.sheet, this.tableName);
+    this.state = TableHelper.getState(
+      this.spreadsheetId,
+      this.sheet,
+      this.tableName,
+    );
     // Check whether we actually achieved the goal
     const newGridRange = this.state.gtable.range;
-    if (newGridRange.endRowIndex - (newGridRange.startRowIndex + 1) < rowsNeeded) {
-      throw new OurError(`Failed to enlarge ${this.sheet.getSheetName()}.${this.tableName} to ${rowsNeeded} data rows`);
+    if (
+      newGridRange.endRowIndex - (newGridRange.startRowIndex + 1) <
+      rowsNeeded
+    ) {
+      throw new OurError(
+        `Failed to enlarge ${this.sheet.getSheetName()}.${this.tableName} to ${rowsNeeded} data rows`,
+      );
     }
   }
 
@@ -178,7 +193,8 @@ class TableHelper {
     const row = this.state.gtable.range.startRowIndex + 2;
     const column = this.state.gtable.range.startColumnIndex + tcolumnIndex + 1;
     const numRows =
-      this.state.gtable.range.endRowIndex - (this.state.gtable.range.startRowIndex + 1);
+      this.state.gtable.range.endRowIndex -
+      (this.state.gtable.range.startRowIndex + 1);
     return this.sheet.getRange(row, column, numRows, 1);
   }
 }
