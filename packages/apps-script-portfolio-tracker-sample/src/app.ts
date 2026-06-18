@@ -9,6 +9,20 @@ import type {
 
 import { makeTableHelper } from "./sheet-utils.js";
 
+function rangeStr(range: GoogleAppsScript.Spreadsheet.Range) {
+  return `${JSON.stringify({ row: range.getRow(), column: range.getColumn(), numRows: range.getNumRows(), numColumns: range.getNumColumns() })}`;
+}
+
+/**
+ * Add a leading apostrophe to purely numeric account names.
+ */
+function formatAccountName(accountName: string): string {
+  if (accountName.search(/^[0-9]+$/) == 0) {
+    return `'${accountName}`;
+  }
+  return accountName;
+}
+
 export function playground() {
   const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = spreadsheet.getSheetByName("Sheet1");
@@ -39,18 +53,14 @@ export function playground() {
     (() => {
       throw new Error("Sheet1:Table2:g not found");
     })();
-  console.log(
-    `range2 before: ${JSON.stringify({ row: range2.getRow(), column: range2.getColumn(), numRows: range2.getNumRows(), numColumns: range2.getNumColumns() })}`,
-  );
+  console.log(`range2 before: ${rangeStr(range2)}`);
   helper2.ensureRowCount(13);
   range2 =
     helper2.getColumnRange("g") ??
     (() => {
       throw new Error("Sheet1:Table2:g not found");
     })();
-  console.log(
-    `range2 after: ${JSON.stringify({ row: range2.getRow(), column: range2.getColumn(), numRows: range2.getNumRows(), numColumns: range2.getNumColumns() })}`,
-  );
+  console.log(`range2 after: ${rangeStr(range2)}`);
 }
 
 const HOLDINGS_SHEET_NAME = "Holdings";
@@ -61,41 +71,72 @@ function updateSpreadsheet(
   classifications: Classifications,
   accounts: Account[],
 ) {
-  console.log(`${accounts.length} accounts`); // TODO remove
+  const accountMap = new Map(accounts.map((a) => [a.id, a.name]));
   const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  const spreadsheetId = spreadsheet.getId();
   const assetsSheet = spreadsheet.getSheetByName(ASSET_SHEET_NAME);
   const holdingsSheet = spreadsheet.getSheetByName(HOLDINGS_SHEET_NAME);
 
   if (!assetsSheet || !holdingsSheet) {
     throw new Error("classifications and/or holdings sheet missing");
   }
-  const holdings = new Map(holdingsArray.map((h) => [h.ticker, h]));
   const holdingsTableHelper =
-    makeTableHelper(spreadsheet.getId(), holdingsSheet, HOLDINGS_TABLE_NAME) ??
+    makeTableHelper(spreadsheetId, holdingsSheet, HOLDINGS_TABLE_NAME) ??
     (() => {
       throw new Error(
         `${HOLDINGS_SHEET_NAME}:${HOLDINGS_TABLE_NAME} not found`,
       );
     })();
-  holdingsTableHelper.ensureRowCount(holdings.size);
-  const holdingsRange = holdingsTableHelper.getRange();
-  // get column headers please
-  const values = holdingsRange.getValues();
+  holdingsTableHelper.ensureRowCount(holdingsArray.length);
   // TODO: Do something for realz! Stomp on Account (needs a lookup), Asset, Shares; and for manual holdings, Price.
   // For everything else just write back what was there, but clear Account and Asset for excess rows (e.g. table is larger than necessary)
   // Write it back
-  holdingsRange.setValues(values);
-  console.log(Object.entries(classifications).length);
-  let lock: GoogleAppsScript.Lock.Lock | undefined;
-  try {
-    lock = LockService.getScriptLock();
-    lock.waitLock(30_000);
-    // TODO: updates go here
-  } finally {
-    lock?.releaseLock();
-  }
-}
+  const getColumnRange = (columnName: string) => {
+    const result = holdingsTableHelper.getColumnRange(columnName);
+    if (result === undefined) {
+      throw new Error(`Holdings column ${columnName} not found`);
+    }
+    return result;
+  };
+  const padding = holdingsTableHelper.getNumRows() - holdingsArray.length;
+  const hAccountCol = holdingsArray.map(
+    (h) => accountMap.get(h.userAccountId) ?? `Unknown: ${h.userAccountId}`,
+  );
+  const hAssetCol = holdingsArray.map((h) => h.ticker);
+  const hSharesCol = holdingsArray.map((h) => h.quantity);
+  const hPriceCol = holdingsArray.map((h) => (h.cusip ? null : h.price));
+  console.log(`hPriceCol=${JSON.stringify(hPriceCol, null, 2)}`);
 
+  getColumnRange("Account").setValues([
+    ...hAccountCol.map((v) => [formatAccountName(v)]),
+    ...Array(padding).fill([""]),
+  ]);
+  getColumnRange("Asset").setValues([
+    ...hAssetCol.map((v) => [v]),
+    ...Array(padding).fill([""]),
+  ]);
+  getColumnRange("Shares").setValues([
+    ...hSharesCol.map((v) => [v]),
+    ...Array(padding).fill([""]),
+  ]);
+  // TODO: don't change it here, change it in the Asset Tracker sheet !!!
+  const PRICE_FORMULA =
+    '=IF(Holdings[Asset] <> "",XLOOKUP(Holdings[Asset],Assets[Ticker Text],Assets[Price]),"")';
+  const priceA1Ref = getColumnRange("Price").getA1Notation();
+  Sheets.Spreadsheets.Values.update(
+    {
+      values: [
+        ...hPriceCol.map((price) => [price == null ? PRICE_FORMULA : price]),
+        ...Array(padding).fill([PRICE_FORMULA]),
+      ],
+    },
+    spreadsheetId,
+    priceA1Ref,
+    { valueInputOption: "USER_ENTERED" },
+  );
+  // TODO: Classifications!
+  console.log(Object.entries(classifications).length);
+}
 export function doPost(event: GoogleAppsScript.Events.DoPost) {
   try {
     const {
@@ -112,7 +153,14 @@ export function doPost(event: GoogleAppsScript.Events.DoPost) {
       );
     }
 
-    updateSpreadsheet(holdings, classifications, accounts);
+    let lock: GoogleAppsScript.Lock.Lock | undefined;
+    try {
+      lock = LockService.getScriptLock();
+      lock.waitLock(30_000);
+      updateSpreadsheet(holdings, classifications, accounts);
+    } finally {
+      lock?.releaseLock();
+    }
     const responseBody: PostResponse = {
       success: true,
       message: "Data received",
@@ -129,4 +177,8 @@ export function doPost(event: GoogleAppsScript.Events.DoPost) {
       JSON.stringify(responseBody),
     ).setMimeType(ContentService.MimeType.JSON);
   }
+}
+
+export function placeholder(): boolean {
+  return true;
 }

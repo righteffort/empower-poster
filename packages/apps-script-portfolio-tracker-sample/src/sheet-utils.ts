@@ -193,6 +193,12 @@ class TableHelper {
     }
   }
 
+  /** The number of data rows. */
+  getNumRows() {
+    const gridRange = this.state.gtable.range;
+    return gridRange.endRowIndex - (gridRange.startRowIndex + 1);
+  }
+
   /**
    * Returns SpreadsheetApp Range for the data with the given columnName.
    */
