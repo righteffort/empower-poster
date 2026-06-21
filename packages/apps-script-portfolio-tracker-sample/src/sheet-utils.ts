@@ -159,7 +159,18 @@ class TableHelper {
       );
     }
     // Extend the table until it will accomodate all the rows
-    let totalRowsToAdd = rowsNeeded - numRows;
+    // Until b/525219695 is fixed, we have to make sure there is always one
+    // blank row at the end of the table.
+    const rowsActuallyNeeded = rowsNeeded + 1;
+    let totalRowsToAdd = rowsActuallyNeeded - numRows;
+    if (totalRowsToAdd > 0) {
+      // We'll assume a blank first column is a proxy for an empty row (some columns may contain formulas)
+      if (this.sheet.getRange(lastRow, firstColumn).getDisplayValue() !== "") {
+        throw new OurError(
+          "Cannot extend table with non-blank value in first column of the last row. https://issuetracker.google.com/issues/525219695",
+        );
+      }
+    }
     while (totalRowsToAdd > 0) {
       const rowsToAdd = Math.min(totalRowsToAdd, numRows);
       console.log(
@@ -175,20 +186,20 @@ class TableHelper {
       numRows += rowsToAdd;
       totalRowsToAdd -= rowsToAdd;
     }
-    // Refresh our state after mutation
+    // Refresh state after mutation
     this.state = TableHelper.getState(
       this.spreadsheetId,
       this.sheet,
       this.tableName,
     );
-    // Check whether we actually achieved the goal
+    // Confirm goal goal was achieved
     const newGridRange = this.state.gtable.range;
     if (
       newGridRange.endRowIndex - (newGridRange.startRowIndex + 1) <
-      rowsNeeded
+      rowsActuallyNeeded
     ) {
       throw new OurError(
-        `Failed to enlarge ${this.sheet.getSheetName()}.${this.tableName} to ${rowsNeeded} data rows`,
+        `Failed to enlarge ${this.sheet.getSheetName()}.${this.tableName} to ${rowsActuallyNeeded} data rows`,
       );
     }
   }
@@ -231,7 +242,7 @@ class TableHelper {
     return this.sheet.getRange(
       gridStartDataRowIndex + 1,
       startColumnIndex + 1,
-      gridRange.endRowIndex - gridStartDataRowIndex,
+      gridRange.endRowIndex - 1 - gridStartDataRowIndex, // -1 for https://issuetracker.google.com/issues/525219695
       endColumnIndex - startColumnIndex,
     );
   }
