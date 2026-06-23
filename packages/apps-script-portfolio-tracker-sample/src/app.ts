@@ -70,10 +70,6 @@ function toLiteralFormula(val: string | boolean | number) {
   return "=" + val;
 }
 
-function isLiteralFormula(formula: string): boolean {
-  return /^=(?:"(?:[^"]|"")*"|TRUE|FALSE|-?\d+(?:\.\d+)?)$/.test(formula);
-}
-
 const HOLDINGS_SHEET_NAME = "Holdings";
 const HOLDINGS_TABLE_NAME = "Holdings";
 const ASSET_SHEET_NAME = "Asset Setup"; // TODO rename variable
@@ -184,36 +180,41 @@ class AssetAllocationUpater {
     if (!priceColRange) {
       throw new Error(`Assets column ${PRICE_COLUMN_NAME} not found`);
     }
+    const nameColRange = tableHelper.getColumnRange(NAME_COLUMN_NAME);
+    if (!nameColRange) {
+      throw new Error(`Assets column ${NAME_COLUMN_NAME} not found`);
+    }
+
+    // Find all the data table-relative 0-based row indices that don't
+    // have the expected formula in the price or column range
+    // TODO: would be nice not to hardcode the defaults
+    const PRICE_FORMULA = "=ASSETPRICE(Assets[Ticker])";
+    const NAME_FORMULA = "=ASSETNAME(Assets[Ticker])";
+
     // delete all existing rows with manual 'literals' in price column
-    priceColRange
-      .getFormulas()
-      .flatMap((r, i) => (isLiteralFormula(r[0] ?? "") ? [i] : []))
-      .reverse()
-      .forEach((i) => {
-        this.assetSetupSheet
-          .getRange(
-            priceColRange.getRow() + i,
-            tableRange.getColumn(),
-            1,
-            tableRange.getNumColumns(),
-          )
-          .deleteCells(SpreadsheetApp.Dimension.ROWS);
-      });
-    // to be safe, delete all existing rows that have genuine literals in the price column
-    priceColRange
-      .getFormulas()
-      .flatMap((r, i) => (r[0] === "" ? [i] : []))
-      .reverse()
-      .forEach((i) => {
-        this.assetSetupSheet
-          .getRange(
-            priceColRange.getRow() + i,
-            tableRange.getColumn(),
-            1,
-            tableRange.getNumColumns(),
-          )
-          .deleteCells(SpreadsheetApp.Dimension.ROWS);
-      });
+    const rowsToDelete = Array.from(
+      new Set([
+        ...priceColRange
+          .getFormulas()
+          .flatMap((r, i) => (r[0] !== PRICE_FORMULA ? [i] : [])),
+        ...nameColRange
+          .getFormulas()
+          .flatMap((r, i) => (r[0] !== NAME_FORMULA ? [i] : [])),
+      ]),
+    ).sort((a, b) => b - a);
+    // console.log(`rowsToDelete=${JSON.stringify(rowsToDelete)}`);
+    rowsToDelete.forEach((i) => {
+      this.assetSetupSheet
+        .getRange(
+          priceColRange.getRow() + i,
+          tableRange.getColumn(),
+          1,
+          tableRange.getNumColumns(),
+        )
+        .deleteCells(SpreadsheetApp.Dimension.ROWS);
+    });
+    // unpleasant, but:
+    tableHelper.refreshState();
     // make sure the table is big enough
     tableHelper.ensureRowCount(assetRows.length);
     // fill in ticker, class, pct (straightforward); and name and pct (mix of formulas -- no change -- or actual value, when there is no cusip).
@@ -229,25 +230,21 @@ class AssetAllocationUpater {
       this.holdingsArray.map((h) => [h.ticker, h]),
     );
 
-    // TODO: would be nice not to hardcode the defaults
-    const PRICE_FORMULA = "=ASSETPRICE(Assets[Ticker])";
-    const NAME_FORMULA = "=ASSETNAME(Assets[Ticker])";
-
-    const tickerCol = assetRows.map((h) => h.ticker);
-    const classCol = assetRows.map((h) => h.class);
-    const classPctCol = assetRows.map((h) => h.fraction);
+    const tickerCol = assetRows.map((h) => [h.ticker]);
+    const classCol = assetRows.map((h) => [h.class]);
+    const classPctCol = assetRows.map((h) => [h.fraction]);
     const priceValues = assetRows.map((h) =>
       holdings.get(h.ticker)?.cusip ? null : holdings.get(h.ticker)?.price,
     ); // TODO: this is too permissive
-    const priceFormulas = priceValues.map((p) =>
+    const priceFormulas = priceValues.map((p) => [
       p == null ? PRICE_FORMULA : toLiteralFormula(p),
-    );
+    ]);
     const nameValues = assetRows.map((h) =>
       holdings.get(h.ticker)?.cusip ? null : h.ticker,
     );
-    const nameFormulas = nameValues.map((n) =>
+    const nameFormulas = nameValues.map((n) => [
       n == null ? NAME_FORMULA : toLiteralFormula(n),
-    );
+    ]);
     // TODO: error checking
     getColumnRange(TICKER_COLUMN_NAME).setValues([
       ...tickerCol,

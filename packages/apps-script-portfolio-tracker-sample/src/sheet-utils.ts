@@ -63,11 +63,7 @@ class TableHelper {
     this.spreadsheetId = spreadsheetId;
     this.sheet = sheet;
     this.tableName = tableName;
-    this.state = TableHelper.getState(
-      this.spreadsheetId,
-      this.sheet,
-      this.tableName,
-    );
+    this.state = this.refreshState();
   }
   private static getState(
     spreadsheetId: string,
@@ -167,7 +163,7 @@ class TableHelper {
       // We'll assume a blank first column is a proxy for an empty row (some columns may contain formulas)
       if (this.sheet.getRange(lastRow, firstColumn).getDisplayValue() !== "") {
         throw new OurError(
-          "Cannot extend table with non-blank value in first column of the last row. https://issuetracker.google.com/issues/525219695",
+          "Refusing to extend table with non-blank value in first column of the last row. https://issuetracker.google.com/issues/525219695",
         );
       }
     }
@@ -187,11 +183,7 @@ class TableHelper {
       totalRowsToAdd -= rowsToAdd;
     }
     // Refresh state after mutation
-    this.state = TableHelper.getState(
-      this.spreadsheetId,
-      this.sheet,
-      this.tableName,
-    );
+    this.refreshState();
     // Confirm goal goal was achieved
     const newGridRange = this.state.gtable.range;
     if (
@@ -207,7 +199,7 @@ class TableHelper {
   /** The number of data rows. */
   getNumRows() {
     const gridRange = this.state.gtable.range;
-    return gridRange.endRowIndex - (gridRange.startRowIndex + 1);
+    return gridRange.endRowIndex - 1 - (gridRange.startRowIndex + 1); // -1 for https://issuetracker.google.com/issues/525219695
   }
 
   /**
@@ -244,5 +236,14 @@ class TableHelper {
       gridRange.endRowIndex - 1 - gridStartDataRowIndex, // -1 for https://issuetracker.google.com/issues/525219695
       numColumns,
     );
+  }
+
+  refreshState(): TableHelperState {
+    this.state = TableHelper.getState(
+      this.spreadsheetId,
+      this.sheet,
+      this.tableName,
+    );
+    return this.state;
   }
 }
