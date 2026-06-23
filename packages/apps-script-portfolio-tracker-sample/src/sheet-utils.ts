@@ -220,9 +220,7 @@ class TableHelper {
     if (tcolumnIndex == null) {
       return;
     }
-    const gridRange = this.state.gtable.range;
-    const startColumnIndex = gridRange.startColumnIndex + tcolumnIndex;
-    return this.getRangeForColumns(startColumnIndex, startColumnIndex + 1);
+    return this.getRangeForColumns(tcolumnIndex, 1);
   }
 
   /*
@@ -231,19 +229,20 @@ class TableHelper {
   getRange(): GoogleAppsScript.Spreadsheet.Range {
     const gridRange = this.state.gtable.range;
     return this.getRangeForColumns(
-      gridRange.startColumnIndex + 1,
+      0,
       gridRange.endColumnIndex - gridRange.startColumnIndex,
     );
   }
 
-  private getRangeForColumns(startColumnIndex: number, endColumnIndex: number) {
+  // startColumnIndex is 0-based relative to the table.
+  private getRangeForColumns(startColumnIndex: number, numColumns: number) {
     const gridRange = this.state.gtable.range;
     const gridStartDataRowIndex = gridRange.startRowIndex + 1; // For header row
     return this.sheet.getRange(
       gridStartDataRowIndex + 1,
-      startColumnIndex + 1,
+      gridRange.startColumnIndex + startColumnIndex + 1,
       gridRange.endRowIndex - 1 - gridStartDataRowIndex, // -1 for https://issuetracker.google.com/issues/525219695
-      endColumnIndex - startColumnIndex,
+      numColumns,
     );
   }
 }
