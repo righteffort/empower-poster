@@ -10,50 +10,6 @@ import type {
 
 import { makeTableHelper } from "./sheet-utils.js";
 
-export function playground() {
-  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = spreadsheet.getSheetByName("Sheet1");
-  if (sheet == null) {
-    throw new Error("Sheet1 not found");
-  }
-  const helper = makeTableHelper(spreadsheet.getId(), sheet, "Table1");
-  if (helper == null) {
-    throw new Error("Sheet1:Table1 not found");
-  }
-  let range = helper.getColumnRange("a");
-  if (range == null) {
-    throw new Error("Sheet1:Table1:a not found");
-  }
-  console.log("column a", JSON.stringify(range.getValues(), null, 2));
-  range = helper.getColumnRange("d");
-  if (range == null) {
-    throw new Error("Sheet1:Table1:d not found");
-  }
-  console.log("column d", JSON.stringify(range.getValues(), null, 2));
-  const helper2 =
-    makeTableHelper(spreadsheet.getId(), sheet, "Table2") ??
-    (() => {
-      throw new Error("Sheet1:Table2 not found");
-    })();
-  let range2 =
-    helper2.getColumnRange("g") ??
-    (() => {
-      throw new Error("Sheet1:Table2:g not found");
-    })();
-  console.log(`range2 before: ${rangeStr(range2)}`);
-  helper2.ensureRowCount(13);
-  range2 =
-    helper2.getColumnRange("g") ??
-    (() => {
-      throw new Error("Sheet1:Table2:g not found");
-    })();
-  console.log(`range2 after: ${rangeStr(range2)}`);
-}
-
-function rangeStr(range: GoogleAppsScript.Spreadsheet.Range) {
-  return `${JSON.stringify({ row: range.getRow(), column: range.getColumn(), numRows: range.getNumRows(), numColumns: range.getNumColumns() })}`;
-}
-
 /**
  * Add a leading apostrophe to purely numeric account names.
  */
@@ -70,10 +26,12 @@ function toLiteralFormula(val: string | boolean | number) {
   return "=" + val;
 }
 
+const ASSET_SETUP_SHEET_NAME = "Asset Setup";
+const ASSETS_TABLE_NAME = "Assets";
+const ASSET_CLASSES_TABLE_NAME = "Asset Classes";
+const CLASS_CATEGORIES_TABLE_NAME = "Class Categories";
 const HOLDINGS_SHEET_NAME = "Holdings";
 const HOLDINGS_TABLE_NAME = "Holdings";
-const ASSET_SHEET_NAME = "Asset Setup"; // TODO rename variable
-const ASSETS_TABLE_NAME = "Assets";
 
 class AssetAllocationUpater {
   private readonly holdingsArray: HoldingEntry[];
@@ -94,7 +52,9 @@ class AssetAllocationUpater {
     this.accountMap = new Map(accounts.map((a) => [a.id, a.name]));
     this.spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
     this.spreadsheetId = this.spreadsheet.getId();
-    const assetSetupSheet = this.spreadsheet.getSheetByName(ASSET_SHEET_NAME);
+    const assetSetupSheet = this.spreadsheet.getSheetByName(
+      ASSET_SETUP_SHEET_NAME,
+    );
     const holdingsSheet = this.spreadsheet.getSheetByName(HOLDINGS_SHEET_NAME);
     if (!assetSetupSheet || !holdingsSheet) {
       throw new Error("classifications and/or holdings sheet missing");
@@ -103,7 +63,7 @@ class AssetAllocationUpater {
     this.holdingsSheet = holdingsSheet;
   }
   updateSpreadsheet() {
-    this.updateAssetSetup();
+    this.updateAssetsAndCategories();
     this.updateHoldings();
   }
   private updateHoldings() {
@@ -152,20 +112,35 @@ class AssetAllocationUpater {
     ]);
   }
 
-  private updateAssetSetup() {
+  private updateAssetsAndCategories() {
     const TICKER_COLUMN_NAME = "Ticker";
     const NAME_COLUMN_NAME = "Name";
     const CLASS_COLUMN_NAME = "Class";
     const CLASS_PCT_COLUMN_NAME = "Class Pct";
     const PRICE_COLUMN_NAME = "Price";
-    const assetRows = Object.entries(this.classifications).flatMap(
+    const flatAssets = Object.entries(this.classifications).flatMap(
       ([ticker, v]) =>
-        v.map((classification) => ({
+        v.map((c) => ({
           ticker,
-          class: classification.classes[1] || classification.classes[0],
-          fraction: classification.fraction,
+          classes: [c.classes[0], c.classes[1] || c.classes[0]],
+          fraction: c.fraction,
         })),
     );
+    const assetClasses = Array.from(
+      new Set(flatAssets.map((a) => a.classes.join("\0"))),
+    )
+      .sort()
+      .map((v) => v.split("\0"));
+    const classCategories = Array.from(
+      new Set(assetClasses.map((v) => v[0] || "")),
+    ).sort();
+    this.updateAssetClasses(assetClasses);
+    this.updateClassCategories(classCategories);
+    const assetRows = flatAssets.map((a) => ({
+      ticker: a.ticker,
+      class: a.classes[1],
+      fraction: a.fraction,
+    }));
     const tableHelper =
       makeTableHelper(
         this.spreadsheetId,
@@ -173,9 +148,10 @@ class AssetAllocationUpater {
         ASSETS_TABLE_NAME,
       ) ??
       (() => {
-        throw new Error(`${ASSET_SHEET_NAME}:${ASSETS_TABLE_NAME} not found`);
+        throw new Error(
+          `${ASSET_SETUP_SHEET_NAME}:${ASSETS_TABLE_NAME} not found`,
+        );
       })();
-    const tableRange = tableHelper.getRange();
     const priceColRange = tableHelper.getColumnRange(PRICE_COLUMN_NAME);
     if (!priceColRange) {
       throw new Error(`Assets column ${PRICE_COLUMN_NAME} not found`);
@@ -191,30 +167,17 @@ class AssetAllocationUpater {
     const PRICE_FORMULA = "=ASSETPRICE(Assets[Ticker])";
     const NAME_FORMULA = "=ASSETNAME(Assets[Ticker])";
 
-    // delete all existing rows with manual 'literals' in price column
-    const rowsToDelete = Array.from(
-      new Set([
-        ...priceColRange
-          .getFormulas()
-          .flatMap((r, i) => (r[0] !== PRICE_FORMULA ? [i] : [])),
-        ...nameColRange
-          .getFormulas()
-          .flatMap((r, i) => (r[0] !== NAME_FORMULA ? [i] : [])),
-      ]),
-    ).sort((a, b) => b - a);
-    // console.log(`rowsToDelete=${JSON.stringify(rowsToDelete)}`);
-    rowsToDelete.forEach((i) => {
-      this.assetSetupSheet
-        .getRange(
-          priceColRange.getRow() + i,
-          tableRange.getColumn(),
-          1,
-          tableRange.getNumColumns(),
-        )
-        .deleteCells(SpreadsheetApp.Dimension.ROWS);
-    });
-    // unpleasant, but:
-    tableHelper.refreshState();
+    // TODO: probably unnececssary.
+    // delete all existing rows with manual 'literals' in price or name columns
+    const rowsToDelete = new Set([
+      ...priceColRange
+        .getFormulas()
+        .flatMap((r, i) => (r[0] !== PRICE_FORMULA ? [i] : [])),
+      ...nameColRange
+        .getFormulas()
+        .flatMap((r, i) => (r[0] !== NAME_FORMULA ? [i] : [])),
+    ]);
+    tableHelper.deleteRows(rowsToDelete);
     // make sure the table is big enough
     tableHelper.ensureRowCount(assetRows.length);
     // fill in ticker, class, pct (straightforward); and name and pct (mix of formulas -- no change -- or actual value, when there is no cusip).
@@ -266,6 +229,62 @@ class AssetAllocationUpater {
       ...priceFormulas,
       ...Array(padding).fill([PRICE_FORMULA]),
     ]);
+  }
+
+  private updateAssetClasses(assetClasses: string[][]) {
+    const helper = makeTableHelper(
+      this.spreadsheetId,
+      this.assetSetupSheet,
+      ASSET_CLASSES_TABLE_NAME,
+    );
+    if (!helper) {
+      throw new Error(`${ASSET_CLASSES_TABLE_NAME} not found`);
+    }
+    const range = helper.getRange();
+    range.clear();
+    helper.ensureRowCount(assetClasses.length);
+    helper.getRange().setValues(assetClasses.map((cs) => [cs[1], cs[0]]));
+  }
+
+  private updateClassCategories(classCategories: string[]) {
+    const helper = makeTableHelper(
+      this.spreadsheetId,
+      this.assetSetupSheet,
+      CLASS_CATEGORIES_TABLE_NAME,
+    );
+    if (!helper) {
+      throw new Error(`${CLASS_CATEGORIES_TABLE_NAME} not found`);
+    }
+    const range = helper.getRange();
+    const originalCategories = new Set(range.getValues().map((r) => r[0]));
+    const missingCategories = classCategories.filter(
+      (c) => !originalCategories.has(c),
+    );
+    if (missingCategories.length === 0) {
+      return;
+    }
+    // Blindly add rows, rather than checking whether there already was space.
+    const insertedRange = helper.ensureRowCount(
+      range.getNumRows() + missingCategories.length,
+    );
+    if (!insertedRange) {
+      throw new Error(
+        "Logic error in updateClassCategories, failed to add rows",
+      );
+    }
+    const targetRange = this.assetSetupSheet.getRange(
+      insertedRange.getRow(),
+      insertedRange.getColumn(),
+      insertedRange.getNumRows(),
+      1,
+    );
+    // double-check that we're not over-writing anything
+    if (targetRange.getValues().filter((r) => r[0] !== "").length !== 0) {
+      throw new Error(
+        "Logic error in updateClassCategories, would overwrite existing names",
+      );
+    }
+    targetRange.setValues(missingCategories.map((c) => [c]));
   }
 }
 

@@ -55,6 +55,7 @@ class TableHelper {
   private sheet: GoogleAppsScript.Spreadsheet.Sheet;
   private tableName: string;
   private state: TableHelperState;
+  private lastRowAdjustment: 0 | 1; // 1 when https://issuetracker.google.com/issues/525219695 applies
   constructor(
     spreadsheetId: string,
     sheet: GoogleAppsScript.Spreadsheet.Sheet,
@@ -64,6 +65,7 @@ class TableHelper {
     this.sheet = sheet;
     this.tableName = tableName;
     this.state = this.refreshState();
+    this.lastRowAdjustment = this.getLastRowAdjustment();
   }
   private static getState(
     spreadsheetId: string,
@@ -134,10 +136,58 @@ class TableHelper {
     return { gsheet, gtable, columnNameToIndex };
   }
 
+  private getLastRowAdjustment() {
+    const gridRange = this.state.gtable.range;
+    const lastRowFormulas = this.sheet
+      .getRange(
+        gridRange.endRowIndex,
+        gridRange.startColumnIndex + 1,
+        1,
+        gridRange.endColumnIndex - gridRange.startColumnIndex,
+      )
+      .getFormulas()[0];
+    if (lastRowFormulas == null) {
+      throw new Error("Logic bug in getLastRowAdjustment");
+    }
+    return lastRowFormulas.every((f) => f === "") ? 0 : 1;
+  }
+
+  /**
+   * Delete a set of rows. Zero-index relative to data.
+   */
+  deleteRows(rows: Set<number>) {
+    const gridRange = this.state.gtable.range;
+    const gridStartDataRowIndex = gridRange.startRowIndex + 1; // For header row
+    const rowsToDelete = Array.from(rows).sort((a, b) => b - a); // Reverse so row numbers remain correct
+    const rangesToDelete = rowsToDelete.map((i) =>
+      this.sheet.getRange(
+        gridStartDataRowIndex + 1 + i,
+        gridRange.startColumnIndex + 1,
+        1,
+        gridRange.endColumnIndex - gridRange.startColumnIndex,
+      ),
+    );
+    console.log(rangesToDelete.map((r) => r.getA1Notation()));
+    rowsToDelete.forEach((i) => {
+      this.sheet
+        .getRange(
+          gridStartDataRowIndex + 1 + i,
+          gridRange.startColumnIndex + 1,
+          1,
+          gridRange.endColumnIndex - gridRange.startColumnIndex,
+        )
+        .deleteCells(SpreadsheetApp.Dimension.ROWS);
+    });
+    // Refresh state after mutation
+    this.refreshState();
+  }
+
   /**
    * Make sure the table has at least rowsNeeded rows
    */
-  ensureRowCount(rowsNeeded: number) {
+  ensureRowCount(
+    rowsNeeded: number,
+  ): GoogleAppsScript.Spreadsheet.Range | undefined {
     const gridRange = this.state.gtable.range;
     // Convert to SpreadsheetApp: 1-indexed and closed-closed ranges
     const firstRow = gridRange.startRowIndex + 2; // +1 for header row
@@ -146,7 +196,7 @@ class TableHelper {
       gridRange.startColumnIndex + 1,
       gridRange.endColumnIndex,
     ];
-    let numRows = lastRow - firstRow + 1;
+    const numRows = lastRow - firstRow + 1;
     const numColumns = lastColumn - firstColumn + 1;
     if (numRows < 1 || numColumns < 1) {
       // This is redundant with the check in the constructor.
@@ -155,11 +205,11 @@ class TableHelper {
       );
     }
     // Extend the table until it will accomodate all the rows
-    // Until b/525219695 is fixed, we have to make sure there is always one
+    // Until b/525219695 is fixed, we may have to make sure there is always one
     // blank row at the end of the table.
-    const rowsActuallyNeeded = rowsNeeded + 1;
-    let totalRowsToAdd = rowsActuallyNeeded - numRows;
-    if (totalRowsToAdd > 0) {
+    const rowsActuallyNeeded = rowsNeeded + this.lastRowAdjustment;
+    const totalRowsToAdd = rowsActuallyNeeded - numRows;
+    if (totalRowsToAdd > 0 && this.lastRowAdjustment != 0) {
       // We'll assume a blank first column is a proxy for an empty row (some columns may contain formulas)
       if (this.sheet.getRange(lastRow, firstColumn).getDisplayValue() !== "") {
         throw new OurError(
@@ -167,20 +217,28 @@ class TableHelper {
         );
       }
     }
-    while (totalRowsToAdd > 0) {
-      const rowsToAdd = Math.min(totalRowsToAdd, numRows);
+    let numRowsAvailable = numRows - 1; // We have to insert after the first row to avoid breaking named ranges.
+    if (totalRowsToAdd <= 0) {
+      return;
+    }
+    let remainingRowsToAdd = totalRowsToAdd;
+    while (remainingRowsToAdd > 0) {
+      const rowsToAdd = Math.min(remainingRowsToAdd, numRowsAvailable);
+      if (rowsToAdd <= 0) {
+        throw new Error("Adding new rows would break named ranges");
+      }
       console.log(
         `inserting here: ${JSON.stringify({ firstRow, firstColumn, rowsToAdd, numColumns }, null, 2)}`,
       );
       const range = this.sheet.getRange(
-        firstRow,
+        firstRow + 1, // Insert after the first row.
         firstColumn,
         rowsToAdd,
         numColumns,
       );
       range.insertCells(SpreadsheetApp.Dimension.ROWS);
-      numRows += rowsToAdd;
-      totalRowsToAdd -= rowsToAdd;
+      numRowsAvailable += rowsToAdd;
+      remainingRowsToAdd -= rowsToAdd;
     }
     // Refresh state after mutation
     this.refreshState();
@@ -194,12 +252,22 @@ class TableHelper {
         `Failed to enlarge ${this.sheet.getSheetName()}.${this.tableName} to ${rowsActuallyNeeded} data rows`,
       );
     }
+    return this.sheet.getRange(
+      firstRow + 1, // Inserted after the first row
+      firstColumn,
+      totalRowsToAdd,
+      numColumns,
+    );
   }
 
   /** The number of data rows. */
   getNumRows() {
     const gridRange = this.state.gtable.range;
-    return gridRange.endRowIndex - 1 - (gridRange.startRowIndex + 1); // -1 for https://issuetracker.google.com/issues/525219695
+    return (
+      gridRange.endRowIndex -
+      this.lastRowAdjustment -
+      (gridRange.startRowIndex + 1)
+    );
   }
 
   /**
@@ -233,7 +301,7 @@ class TableHelper {
     return this.sheet.getRange(
       gridStartDataRowIndex + 1,
       gridRange.startColumnIndex + startColumnIndex + 1,
-      gridRange.endRowIndex - 1 - gridStartDataRowIndex, // -1 for https://issuetracker.google.com/issues/525219695
+      gridRange.endRowIndex - this.lastRowAdjustment - gridStartDataRowIndex,
       numColumns,
     );
   }
