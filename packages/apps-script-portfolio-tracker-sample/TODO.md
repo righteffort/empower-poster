@@ -1,2 +1,7 @@
-* Stomps on price
-* How do we resurrect price formula if we pruned previously? Better to set it explicitly to the formula? `=IF(Holdings[Asset] <> "",XLOOKUP(Holdings[Asset],Assets[Ticker Text],Assets[Price]),"")`
+* fill in Asset Classes automatically ... roughly this but need to set
+  Name to Category when Name is missing (Cash) ... though we do that
+  elsewhere anyay: 
+```javascript
+[...new Set(Object.values(classifications).flatMap(classifications =>
+  classifications.map(c => c.classes.reverse())))]`
+```
