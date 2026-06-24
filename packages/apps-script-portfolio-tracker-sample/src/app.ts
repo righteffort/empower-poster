@@ -67,7 +67,7 @@ class AssetAllocationUpater {
     this.updateHoldings();
   }
   private updateHoldings() {
-    const tableHelper =
+    const helper =
       makeTableHelper(
         this.spreadsheetId,
         this.holdingsSheet,
@@ -78,15 +78,15 @@ class AssetAllocationUpater {
           `${HOLDINGS_SHEET_NAME}:${HOLDINGS_TABLE_NAME} not found`,
         );
       })();
-    tableHelper.ensureRowCount(this.holdingsArray.length);
+    helper.ensureRowCount(this.holdingsArray.length);
     const getColumnRange = (columnName: string) => {
-      const result = tableHelper.getColumnRange(columnName);
+      const result = helper.getColumnRange(columnName);
       if (result === undefined) {
         throw new Error(`Holdings column ${columnName} not found`);
       }
       return result;
     };
-    const padding = tableHelper.getNumRows() - this.holdingsArray.length;
+    const padding = helper.getNumRows() - this.holdingsArray.length;
     const accountCol = this.holdingsArray.map(
       (h) =>
         this.accountMap.get(h.userAccountId) ?? `Unknown: ${h.userAccountId}`,
@@ -141,7 +141,7 @@ class AssetAllocationUpater {
       class: a.classes[1],
       fraction: a.fraction,
     }));
-    const tableHelper =
+    const helper =
       makeTableHelper(
         this.spreadsheetId,
         this.assetSetupSheet,
@@ -152,43 +152,30 @@ class AssetAllocationUpater {
           `${ASSET_SETUP_SHEET_NAME}:${ASSETS_TABLE_NAME} not found`,
         );
       })();
-    const priceColRange = tableHelper.getColumnRange(PRICE_COLUMN_NAME);
+    const priceColRange = helper.getColumnRange(PRICE_COLUMN_NAME);
     if (!priceColRange) {
       throw new Error(`Assets column ${PRICE_COLUMN_NAME} not found`);
     }
-    const nameColRange = tableHelper.getColumnRange(NAME_COLUMN_NAME);
+    const nameColRange = helper.getColumnRange(NAME_COLUMN_NAME);
     if (!nameColRange) {
       throw new Error(`Assets column ${NAME_COLUMN_NAME} not found`);
     }
 
-    // Find all the data table-relative 0-based row indices that don't
-    // have the expected formula in the price or column range
-    // TODO: would be nice not to hardcode the defaults
+    // TODO: would be nice not to hardcode the defaults. We know a priori that they are in the last row.
     const PRICE_FORMULA = "=ASSETPRICE(Assets[Ticker])";
     const NAME_FORMULA = "=ASSETNAME(Assets[Ticker])";
 
-    // TODO: probably unnececssary.
-    // delete all existing rows with manual 'literals' in price or name columns
-    const rowsToDelete = new Set([
-      ...priceColRange
-        .getFormulas()
-        .flatMap((r, i) => (r[0] !== PRICE_FORMULA ? [i] : [])),
-      ...nameColRange
-        .getFormulas()
-        .flatMap((r, i) => (r[0] !== NAME_FORMULA ? [i] : [])),
-    ]);
-    tableHelper.deleteRows(rowsToDelete);
     // make sure the table is big enough
-    tableHelper.ensureRowCount(assetRows.length);
+    helper.ensureRowCount(assetRows.length);
     // fill in ticker, class, pct (straightforward); and name and pct (mix of formulas -- no change -- or actual value, when there is no cusip).
     const getColumnRange = (columnName: string) => {
-      const result = tableHelper.getColumnRange(columnName);
+      const result = helper.getColumnRange(columnName);
       if (result === undefined) {
         throw new Error(`Assets column ${columnName} not found`);
       }
       return result;
     };
-    const padding = tableHelper.getNumRows() - assetRows.length;
+    const padding = helper.getNumRows() - assetRows.length;
     const holdings = new Map<string, HoldingEntry>(
       this.holdingsArray.map((h) => [h.ticker, h]),
     );
@@ -243,7 +230,6 @@ class AssetAllocationUpater {
     const range = helper.getRange();
     range.clear();
     helper.ensureRowCount(assetClasses.length);
-    // TODO: this doesn't work if the table used to be too big! Add padding.
     helper.getRange().setValues(assetClasses.map((cs) => [cs[1], cs[0]]));
   }
 
@@ -256,38 +242,30 @@ class AssetAllocationUpater {
     if (!helper) {
       throw new Error(`${CLASS_CATEGORIES_TABLE_NAME} not found`);
     }
-    const range = helper.getRange();
-    const originalCategories = new Set(range.getValues().map((r) => r[0]));
-    const missingCategories = classCategories.filter(
-      (c) => !originalCategories.has(c),
+    const NAME_COLUMN_NAME = "Name";
+    const range = helper.getColumnRange(NAME_COLUMN_NAME);
+    if (range == null) {
+      throw new Error(
+        `${CLASS_CATEGORIES_TABLE_NAME}:${NAME_COLUMN_NAME} not found`,
+      );
+    }
+    const existingCategoryNames = range.getValues().map((r) => r[0]);
+    const missingCategoryNames = classCategories.filter(
+      (c) => !existingCategoryNames.includes(c),
     );
-    if (missingCategories.length === 0) {
+    if (missingCategoryNames.length === 0) {
       return;
     }
-    // Blindly add rows, rather than checking whether there already
-    // was space; in this context we *don't* want to delete existing
-    // data, since the 2nd column is set by the user
-    const insertedRange = helper.ensureRowCount(
-      range.getNumRows() + missingCategories.length,
+    helper.ensureRowCount(
+      existingCategoryNames.length + missingCategoryNames.length,
     );
-    if (!insertedRange) {
-      throw new Error(
-        "Logic error in updateClassCategories, failed to add rows",
-      );
-    }
-    const targetRange = this.assetSetupSheet.getRange(
-      insertedRange.getRow(),
-      insertedRange.getColumn(),
-      insertedRange.getNumRows(),
-      1,
+    const missingRange = this.assetSetupSheet.getRange(
+      range.getRow() + existingCategoryNames.length,
+      range.getColumn(),
+      missingCategoryNames.length,
+      range.getNumColumns(),
     );
-    // double-check that we're not over-writing anything
-    if (targetRange.getValues().filter((r) => r[0] !== "").length !== 0) {
-      throw new Error(
-        "Logic error in updateClassCategories, would overwrite existing names",
-      );
-    }
-    targetRange.setValues(missingCategories.map((c) => [c]));
+    missingRange.setValues(missingCategoryNames.map((c) => [c]));
   }
 }
 

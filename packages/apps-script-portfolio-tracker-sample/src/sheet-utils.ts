@@ -19,6 +19,7 @@ export function makeTableHelper(
   }
 }
 
+// Type-safe subsets of Sheets.Table and Sheets.Sheet: no undefined fields
 interface GTable {
   columnProperties: {
     columnIndex: number;
@@ -49,6 +50,7 @@ interface TableHelperState {
   gsheet: GSheet;
   gtable: GTable;
   columnNameToIndex: Map<string, number>;
+  hasUniqueLargestEndRowIndex: boolean;
 }
 
 class TableHelper {
@@ -57,8 +59,7 @@ class TableHelper {
   private tableName: string;
   private state: TableHelperState;
   private isFormulaTable: boolean;
-  private lastRowAdjustment: 0 | 1; // 1 for formula tables when https://issuetracker.google.com/issues/525219695 applies
-  private isUniqueTableWithLowestRow: boolean;
+  private lastRowAdjustment: 0 | 1; // 1 for formula tables, to preserve default last row
   constructor(
     spreadsheetId: string,
     sheet: GoogleAppsScript.Spreadsheet.Sheet,
@@ -70,7 +71,6 @@ class TableHelper {
     this.state = this.refreshState();
     this.isFormulaTable = this.getIsFormulaTable();
     this.lastRowAdjustment = this.isFormulaTable ? 1 : 0;
-    this.isUniqueTableWithLowestRow = this.getIsUniqueTableWithLowestRow();
   }
   private static getState(
     spreadsheetId: string,
@@ -102,7 +102,15 @@ class TableHelper {
       },
       tables: [],
     };
-    const _gtable = _gsheet?.tables?.filter((t) => t.name === tableName)[0];
+    const _gtables = _gsheet.tables;
+    const endRowIndices = (_gtables ?? []).map(
+      (t) => t.range?.endRowIndex ?? 0,
+    );
+    const largestEndRowIndex = Math.max(...endRowIndices);
+    const uniqueLargestEndRowIndexExists =
+      endRowIndices.filter((i) => i === largestEndRowIndex).length === 1;
+
+    const _gtable = _gtables?.filter((t) => t.name === tableName)[0];
     if (_gtable === undefined) {
       throw new OurError(`No such table ${sheetTitle}.${tableName}.`);
     }
@@ -134,12 +142,13 @@ class TableHelper {
         `Table ${sheetTitle}.${tableName} has zero data rows or zero columns`,
       );
     }
-
-    gsheet.tables.push(gtable);
+    const hasUniqueLargestEndRowIndex =
+      uniqueLargestEndRowIndexExists &&
+      _gtable?.range?.endRowIndex === largestEndRowIndex;
     const columnNameToIndex = new Map<string, number>(
       gtable.columnProperties.map((p) => [p.columnName, p.columnIndex]),
     );
-    return { gsheet, gtable, columnNameToIndex };
+    return { gsheet, gtable, columnNameToIndex, hasUniqueLargestEndRowIndex };
   }
 
   private getIsFormulaTable() {
@@ -153,13 +162,9 @@ class TableHelper {
       )
       .getFormulas()[0];
     if (lastRowFormulas == null) {
-      throw new Error("Logic bug in getLastRowAdjustment");
+      throw new Error("Logic bug in getIsFormulaTable");
     }
     return !lastRowFormulas.every((f) => f === "");
-  }
-
-  private getIsUniqueTableWithLowestRow() {
-    return false; // TODO
   }
 
   /**
@@ -229,9 +234,10 @@ class TableHelper {
       this.spreadsheetId,
     );
     this.refreshState();
+    // Did it work?
     if (this.getNumRows() < rowsNeeded) {
       throw new Error(
-        `Tried to extend table ${this.state.gtable.name} past end of sheet`,
+        `Failed to extend table ${this.state.gtable.name}, probably reached end of sheet`,
       );
     }
     return this.sheet.getRange(
@@ -245,16 +251,15 @@ class TableHelper {
   private ensureFormulaRowCount(
     rowsNeeded: number,
   ): GoogleAppsScript.Spreadsheet.Range | undefined {
-    // TODO: simplify!
+    // Insert rows above the last row in the table. They will acquire that row's formulas.
     const gridRange = this.state.gtable.range;
     // Convert to SpreadsheetApp: 1-indexed and closed-closed ranges
-    const firstRow = gridRange.startRowIndex + 2; // +1 for header row
     const lastRow = gridRange.endRowIndex;
     const [firstColumn, lastColumn] = [
       gridRange.startColumnIndex + 1,
       gridRange.endColumnIndex,
     ];
-    const numRows = lastRow - firstRow + 1;
+    const numRows = gridRange.endRowIndex - gridRange.startRowIndex - 1; // +1 for header row
     const numColumns = lastColumn - firstColumn + 1;
     if (numRows < 1 || numColumns < 1) {
       // This is redundant with the check in the constructor.
@@ -263,46 +268,24 @@ class TableHelper {
       );
     }
     // Extend the table until it will accomodate all the rows
-    // Until b/525219695 is fixed, we may have to make sure there is always one
-    // blank row at the end of the table.
-    const rowsActuallyNeeded = rowsNeeded + this.lastRowAdjustment;
+    // We have to make sure there is always one default row at the end of the table
+    // so that we can simply insert rows above it.
+    const rowsActuallyNeeded = rowsNeeded + 1; // Preserve last row
     const totalRowsToAdd = rowsActuallyNeeded - numRows;
-    if (totalRowsToAdd > 0 && this.lastRowAdjustment != 0) {
-      // We'll assume a blank first column is a proxy for an empty row (some columns may contain formulas)
+    if (totalRowsToAdd > 0) {
+      // We'll assume a blank first column is a proxy for an empty row (some columns will contain default formulas)
       if (this.sheet.getRange(lastRow, firstColumn).getDisplayValue() !== "") {
         throw new OurError(
-          "Refusing to extend table with non-blank value in first column of the last row. https://issuetracker.google.com/issues/525219695",
+          "Refusing to extend table with non-blank value in first column of the last row.",
         );
       }
     }
-    let numRowsAvailable = numRows - 1; // We have to insert after the first row to avoid breaking named ranges.
-    if (totalRowsToAdd <= 0) {
-      return;
-    }
-    if (!this.isUniqueTableWithLowestRow) {
+    if (!this.state.hasUniqueLargestEndRowIndex) {
       throw new OurError(
         `Cannot extend formula table ${this.state.gtable.name} unless there is no data outside the table on or below its last row`,
       );
     }
-    let remainingRowsToAdd = totalRowsToAdd;
-    while (remainingRowsToAdd > 0) {
-      const rowsToAdd = Math.min(remainingRowsToAdd, numRowsAvailable);
-      if (rowsToAdd <= 0) {
-        throw new Error("Adding new rows would break named ranges");
-      }
-      console.log(
-        `inserting here: ${JSON.stringify({ firstRow, firstColumn, rowsToAdd, numColumns }, null, 2)}`,
-      );
-      const range = this.sheet.getRange(
-        firstRow + 1, // Insert after the first row.
-        firstColumn,
-        rowsToAdd,
-        numColumns,
-      );
-      range.insertCells(SpreadsheetApp.Dimension.ROWS);
-      numRowsAvailable += rowsToAdd;
-      remainingRowsToAdd -= rowsToAdd;
-    }
+    this.sheet.insertRowsBefore(lastRow, totalRowsToAdd);
     // Refresh state after mutation
     this.refreshState();
     // Confirm goal goal was achieved
@@ -315,12 +298,7 @@ class TableHelper {
         `Failed to enlarge ${this.sheet.getSheetName()}.${this.tableName} to ${rowsActuallyNeeded} data rows`,
       );
     }
-    return this.sheet.getRange(
-      firstRow + 1, // Inserted after the first row
-      firstColumn,
-      totalRowsToAdd,
-      numColumns,
-    );
+    return; // There's no use case where the caller needs the range of added rows.
   }
 
   /** The number of data rows. */

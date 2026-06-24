@@ -1,6 +1,7 @@
 declare namespace Sheets {
   // Convenience types
   type Spreadsheet = import("@googleapis/sheets").sheets_v4.Schema$Spreadsheet;
+  type Sheet = import("@googleapis/sheets").sheets_v4.Schema$Sheet;
   type Table = import("@googleapis/sheets").sheets_v4.Schema$Table;
   type SafeTable = {
     [K in keyof Table]-?: NonNullable<X[Table]>;
