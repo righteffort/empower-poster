@@ -243,6 +243,7 @@ class AssetAllocationUpater {
     const range = helper.getRange();
     range.clear();
     helper.ensureRowCount(assetClasses.length);
+    // TODO: this doesn't work if the table used to be too big! Add padding.
     helper.getRange().setValues(assetClasses.map((cs) => [cs[1], cs[0]]));
   }
 
@@ -263,7 +264,9 @@ class AssetAllocationUpater {
     if (missingCategories.length === 0) {
       return;
     }
-    // Blindly add rows, rather than checking whether there already was space.
+    // Blindly add rows, rather than checking whether there already
+    // was space; in this context we *don't* want to delete existing
+    // data, since the 2nd column is set by the user
     const insertedRange = helper.ensureRowCount(
       range.getNumRows() + missingCategories.length,
     );

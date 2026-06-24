@@ -1,7 +1,7 @@
 export class OurError extends Error {}
 
 /**
-  Convenience functions for operating on Tables.
+  Convenience functions for operating on Tables in Portfolio Tracker Spreadsheet.
  */
 export function makeTableHelper(
   spreadsheetId: string,
@@ -31,6 +31,7 @@ interface GTable {
     startColumnIndex: number;
     startRowIndex: number;
   };
+  tableId: string;
 }
 
 interface GSheet {
@@ -55,7 +56,9 @@ class TableHelper {
   private sheet: GoogleAppsScript.Spreadsheet.Sheet;
   private tableName: string;
   private state: TableHelperState;
-  private lastRowAdjustment: 0 | 1; // 1 when https://issuetracker.google.com/issues/525219695 applies
+  private isFormulaTable: boolean;
+  private lastRowAdjustment: 0 | 1; // 1 for formula tables when https://issuetracker.google.com/issues/525219695 applies
+  private isUniqueTableWithLowestRow: boolean;
   constructor(
     spreadsheetId: string,
     sheet: GoogleAppsScript.Spreadsheet.Sheet,
@@ -65,7 +68,9 @@ class TableHelper {
     this.sheet = sheet;
     this.tableName = tableName;
     this.state = this.refreshState();
-    this.lastRowAdjustment = this.getLastRowAdjustment();
+    this.isFormulaTable = this.getIsFormulaTable();
+    this.lastRowAdjustment = this.isFormulaTable ? 1 : 0;
+    this.isUniqueTableWithLowestRow = this.getIsUniqueTableWithLowestRow();
   }
   private static getState(
     spreadsheetId: string,
@@ -74,7 +79,7 @@ class TableHelper {
   ): TableHelperState {
     const _gspreadsheet = Sheets.Spreadsheets.get(spreadsheetId, {
       fields:
-        "sheets(properties(sheetId,title,gridProperties(rowCount,columnCount)),tables(name,range,columnProperties))",
+        "sheets(properties(sheetId,title,gridProperties(rowCount,columnCount)),tables(tableId,name,range,columnProperties))",
     });
     const sheetTitle = sheet.getSheetName();
     const _gsheet = _gspreadsheet.sheets?.filter(
@@ -119,6 +124,7 @@ class TableHelper {
         startColumnIndex: _gtable.range?.startColumnIndex ?? 0,
         startRowIndex: _gtable.range?.startRowIndex ?? 0,
       },
+      tableId: _gtable.tableId ?? fail(),
     };
     if (
       gtable.range.startRowIndex + 1 >= gtable.range.endRowIndex || // +1 for header row
@@ -136,7 +142,7 @@ class TableHelper {
     return { gsheet, gtable, columnNameToIndex };
   }
 
-  private getLastRowAdjustment() {
+  private getIsFormulaTable() {
     const gridRange = this.state.gtable.range;
     const lastRowFormulas = this.sheet
       .getRange(
@@ -149,7 +155,11 @@ class TableHelper {
     if (lastRowFormulas == null) {
       throw new Error("Logic bug in getLastRowAdjustment");
     }
-    return lastRowFormulas.every((f) => f === "") ? 0 : 1;
+    return !lastRowFormulas.every((f) => f === "");
+  }
+
+  private getIsUniqueTableWithLowestRow() {
+    return false; // TODO
   }
 
   /**
@@ -188,6 +198,54 @@ class TableHelper {
   ensureRowCount(
     rowsNeeded: number,
   ): GoogleAppsScript.Spreadsheet.Range | undefined {
+    return this.isFormulaTable
+      ? this.ensureFormulaRowCount(rowsNeeded)
+      : this.ensureValueRowCount(rowsNeeded);
+  }
+
+  private ensureValueRowCount(
+    rowsNeeded: number,
+  ): GoogleAppsScript.Spreadsheet.Range | undefined {
+    // We grandly assume there is nothing underneath us and make it part of the table if we were wrong.
+    const { tableId, range } = this.state.gtable;
+    const oldRange = { ...range };
+    const numRows = this.getNumRows();
+    const rowsToAdd = rowsNeeded - numRows;
+    if (rowsToAdd <= 0) {
+      return undefined;
+    }
+    range.endRowIndex += rowsToAdd;
+    Sheets.Spreadsheets.batchUpdate(
+      {
+        requests: [
+          {
+            updateTable: {
+              fields: "range",
+              table: { tableId, range },
+            },
+          },
+        ],
+      },
+      this.spreadsheetId,
+    );
+    this.refreshState();
+    if (this.getNumRows() < rowsNeeded) {
+      throw new Error(
+        `Tried to extend table ${this.state.gtable.name} past end of sheet`,
+      );
+    }
+    return this.sheet.getRange(
+      oldRange.endRowIndex + 1,
+      oldRange.startColumnIndex + 1,
+      rowsToAdd,
+      oldRange.endColumnIndex - oldRange.startColumnIndex,
+    );
+  }
+
+  private ensureFormulaRowCount(
+    rowsNeeded: number,
+  ): GoogleAppsScript.Spreadsheet.Range | undefined {
+    // TODO: simplify!
     const gridRange = this.state.gtable.range;
     // Convert to SpreadsheetApp: 1-indexed and closed-closed ranges
     const firstRow = gridRange.startRowIndex + 2; // +1 for header row
@@ -220,6 +278,11 @@ class TableHelper {
     let numRowsAvailable = numRows - 1; // We have to insert after the first row to avoid breaking named ranges.
     if (totalRowsToAdd <= 0) {
       return;
+    }
+    if (!this.isUniqueTableWithLowestRow) {
+      throw new OurError(
+        `Cannot extend formula table ${this.state.gtable.name} unless there is no data outside the table on or below its last row`,
+      );
     }
     let remainingRowsToAdd = totalRowsToAdd;
     while (remainingRowsToAdd > 0) {

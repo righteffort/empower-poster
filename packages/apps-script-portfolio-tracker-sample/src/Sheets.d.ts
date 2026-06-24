@@ -10,13 +10,21 @@ declare namespace Sheets {
     [K in keyof GridRange]-?: NonNullable<X[GridRange]>;
   };
   namespace Spreadsheets {
+    type BatchUpdateSpreadsheetRequest =
+      import("@googleapis/sheets").sheets_v4.Schema$BatchUpdateSpreadsheetRequest;
+    type BatchUpdateSpreadsheetResponse =
+      import("@googleapis/sheets").sheets_v4.Schema$BatchUpdateSpreadsheetResponse;
+    function batchUpdate(
+      resource: BatchUpdateSpreadsheetRequest,
+      spreadsheetId: string,
+    ): BatchUpdateSpreadsheetResponse;
     type GetOptionalArgs = Omit<
       import("@googleapis/sheets").sheets_v4.Params$Resource$Spreadsheets$Get,
       "spreadsheetId"
     >;
     function get(
       spreadsheetId: string,
-      optionalArgs: SpreadsheetsGetOptionalArgs? = null,
+      optionalArgs: Spreadsheets.GetOptionalArgs? = null,
     ): Spreadsheet;
   }
 }
