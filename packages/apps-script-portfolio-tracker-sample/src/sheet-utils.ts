@@ -9,7 +9,11 @@ export function makeTableHelper(
   tableName: string,
 ): TableHelper | undefined {
   try {
-    return new TableHelper(spreadsheetId, sheet, tableName);
+    const sheetsService = MySheets;
+    if (sheetsService == null) {
+      throw new OurError("Must enable Sheets service");
+    }
+    return new TableHelper(sheetsService, spreadsheetId, sheet, tableName);
   } catch (e) {
     if (e instanceof OurError) {
       console.log(e.message);
@@ -54,6 +58,7 @@ interface TableHelperState {
 }
 
 class TableHelper {
+  private sheetsService: MyGoogleAppsScript.Sheets;
   private spreadsheetId: string;
   private sheet: GoogleAppsScript.Spreadsheet.Sheet;
   private tableName: string;
@@ -61,10 +66,12 @@ class TableHelper {
   private isFormulaTable: boolean;
   private lastRowAdjustment: 0 | 1; // 1 for formula tables, to preserve default last row
   constructor(
+    sheetsService: MyGoogleAppsScript.Sheets,
     spreadsheetId: string,
     sheet: GoogleAppsScript.Spreadsheet.Sheet,
     tableName: string,
   ) {
+    this.sheetsService = sheetsService;
     this.spreadsheetId = spreadsheetId;
     this.sheet = sheet;
     this.tableName = tableName;
@@ -72,17 +79,17 @@ class TableHelper {
     this.isFormulaTable = this.getIsFormulaTable();
     this.lastRowAdjustment = this.isFormulaTable ? 1 : 0;
   }
-  private static getState(
+  private getState(
     spreadsheetId: string,
     sheet: GoogleAppsScript.Spreadsheet.Sheet,
     tableName: string,
   ): TableHelperState {
-    const _gspreadsheet = Sheets.Spreadsheets.get(spreadsheetId, {
+    const _gspreadsheet = this.sheetsService.Spreadsheets.get(spreadsheetId, {
       fields:
         "sheets(properties(sheetId,title,gridProperties(rowCount,columnCount)),tables(tableId,name,range,columnProperties))",
     });
     const sheetTitle = sheet.getSheetName();
-    const _gsheet = _gspreadsheet.sheets?.filter(
+    const _gsheet = _gspreadsheet?.sheets?.filter(
       (s) => s.properties?.title === sheetTitle,
     )[0];
     if (_gsheet === undefined) {
@@ -212,6 +219,7 @@ class TableHelper {
     rowsNeeded: number,
   ): GoogleAppsScript.Spreadsheet.Range | undefined {
     // We grandly assume there is nothing underneath us and make it part of the table if we were wrong.
+    // TODO: Check that we won't bump into any tables.
     const { tableId, range } = this.state.gtable;
     const oldRange = { ...range };
     const numRows = this.getNumRows();
@@ -220,7 +228,7 @@ class TableHelper {
       return undefined;
     }
     range.endRowIndex += rowsToAdd;
-    Sheets.Spreadsheets.batchUpdate(
+    this.sheetsService.Spreadsheets.batchUpdate(
       {
         requests: [
           {
@@ -345,7 +353,7 @@ class TableHelper {
   /*
    * Returns SpreadsheetApp Range for the table data
    */
-  getRange(): GoogleAppsScript.Spreadsheet.Range {
+  getRange(): GoogleAppsScript.Spreadsheet.Range | undefined {
     const gridRange = this.state.gtable.range;
     return this.getRangeForColumns(
       0,
@@ -356,6 +364,9 @@ class TableHelper {
   // startColumnIndex is 0-based relative to the table.
   private getRangeForColumns(startColumnIndex: number, numColumns: number) {
     const gridRange = this.state.gtable.range;
+    if (this.getNumRows() == 0) {
+      return;
+    }
     const gridStartDataRowIndex = gridRange.startRowIndex + 1; // For header row
     return this.sheet.getRange(
       gridStartDataRowIndex + 1,
@@ -366,11 +377,7 @@ class TableHelper {
   }
 
   refreshState(): TableHelperState {
-    this.state = TableHelper.getState(
-      this.spreadsheetId,
-      this.sheet,
-      this.tableName,
-    );
+    this.state = this.getState(this.spreadsheetId, this.sheet, this.tableName);
     return this.state;
   }
 }

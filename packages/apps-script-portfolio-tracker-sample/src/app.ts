@@ -207,7 +207,7 @@ class AssetAllocationUpater {
     ]);
     getColumnRange(NAME_COLUMN_NAME).setValues([
       ...nameFormulas,
-      ...Array(padding).fill([priceFormula]),
+      ...Array(padding).fill([nameFormula]),
     ]);
     getColumnRange(CLASS_COLUMN_NAME).setValues([
       ...classCol,
@@ -229,13 +229,26 @@ class AssetAllocationUpater {
       this.assetSetupSheet,
       ASSET_CLASSES_TABLE_NAME,
     );
+    if (assetClasses.length == 0) {
+      return;
+    }
     if (!helper) {
       throw new Error(`${ASSET_CLASSES_TABLE_NAME} not found`);
     }
-    const range = helper.getRange();
-    range.clear();
     helper.ensureRowCount(assetClasses.length);
-    helper.getRange().setValues(assetClasses.map((cs) => [cs[1], cs[0]]));
+    const padding = helper.getNumRows() - assetClasses.length;
+    const range = helper.getRange();
+    if (range == null) {
+      throw new Error(
+        `Logic error, ${ASSET_CLASSES_TABLE_NAME} has zero data rows`,
+      );
+    }
+    range
+      .clearContent()
+      .setValues([
+        ...assetClasses.map((cs) => [cs[1], cs[0]]),
+        ...Array(padding).fill(["", ""]),
+      ]);
   }
 
   private updateClassCategories(classCategories: string[]) {
