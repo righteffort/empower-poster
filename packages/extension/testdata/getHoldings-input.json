@@ -1,6 +1,7 @@
 [
   {
     "cusip": "ca",
+    "fundFees": 0.00025,
     "description": "Cash",
     "accountName": "One",
     "userAccountId": 1,
@@ -10,6 +11,7 @@
   },
   {
     "cusip": "bn",
+    "fundFees": 0.0003,
     "description": "Bonds",
     "accountName": "Two",
     "userAccountId": 2,
@@ -20,6 +22,7 @@
   },
   {
     "cusip": "ca",
+    "fundFees": 0.00035,
     "description": "Cash",
     "accountName": "Two",
     "userAccountId": 2,
@@ -29,6 +32,7 @@
   },
   {
     "cusip": "vt",
+    "fundFees": 0.0004,
     "description": "Stocks",
     "price": 0.20,
     "quantity": 495.05,
@@ -39,6 +43,7 @@
   },
   {
     "cusip": "bn",
+    "fundFees": 0.00045,
     "description": "Bonds",
     "price": 4.1,
     "quantity": 3.8,
@@ -49,6 +54,7 @@
   },
   {
     "cusip": "ss",
+    "fundFees": 0,
     "description": "Stocks",
     "price": 0.42,
     "quantity": 3,
