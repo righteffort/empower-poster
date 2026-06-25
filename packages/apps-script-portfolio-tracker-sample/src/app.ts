@@ -188,22 +188,24 @@ class AssetAllocationUpater {
       this.holdingsArray.map((h) => [h.ticker, h]),
     );
 
-    const tickerCol = assetRows.map((h) => [h.ticker]);
-    const classCol = assetRows.map((h) => [h.class]);
-    const classPctCol = assetRows.map((h) => [h.fraction]);
-    const priceValues = assetRows.map((h) =>
-      holdings.get(h.ticker)?.cusip ? null : holdings.get(h.ticker)?.price,
-    );
-    const expRatioValues = assetRows.map((r) =>
-      holdings.get(r.ticker)?.cusip
-        ? null
-        : (holdings.get(r.ticker)?.fundFees ?? 0) * 100,
-    );
+    const tickerCol = assetRows.map((r) => [r.ticker]);
+    const classCol = assetRows.map((r) => [r.class]);
+    const classPctCol = assetRows.map((r) => [r.fraction]);
+    const priceValues = assetRows.map((r) => {
+      const h = holdings.get(r.ticker);
+      return h?.cusip ? null : h?.price
+    });
+    const expRatioValues = assetRows.map((r) => {
+      const h = holdings.get(r.ticker);
+      if (h?.cusip != null) return null;
+      const fundFees = h?.fundFees;
+      return fundFees == null ? "" : fundFees * 100;
+    });
     const priceFormulas = priceValues.map((p) => [
       p == null ? priceFormula : toLiteralFormula(p),
     ]);
-    const nameValues = assetRows.map((h) =>
-      holdings.get(h.ticker)?.cusip ? null : h.ticker,
+    const nameValues = assetRows.map((r) =>
+      holdings.get(r.ticker)?.cusip ? null : r.ticker,
     );
     const nameFormulas = nameValues.map((n) => [
       n == null ? nameFormula : toLiteralFormula(n),
