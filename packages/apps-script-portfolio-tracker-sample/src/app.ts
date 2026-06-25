@@ -118,6 +118,7 @@ class AssetAllocationUpater {
     const CLASS_COLUMN_NAME = "Class";
     const CLASS_PCT_COLUMN_NAME = "Class Pct";
     const PRICE_COLUMN_NAME = "Price";
+    const EXP_RATIO_COLUMN_NAME = "Exp Ratio";
     const flatAssets = Object.entries(this.classifications).flatMap(
       ([ticker, v]) =>
         v.map((c) => ({
@@ -161,9 +162,16 @@ class AssetAllocationUpater {
       throw new Error(`Assets column ${NAME_COLUMN_NAME} not found`);
     }
 
-    // TODO: would be nice not to hardcode the defaults. We know a priori that they are in the last row.
-    const PRICE_FORMULA = "=ASSETPRICE(Assets[Ticker])";
-    const NAME_FORMULA = "=ASSETNAME(Assets[Ticker])";
+    const priceFormula = helper.getColumnDefaultFormula(PRICE_COLUMN_NAME);
+    const nameFormula = helper.getColumnDefaultFormula(NAME_COLUMN_NAME);
+    const expRatioFormula = helper.getColumnDefaultFormula(
+      EXP_RATIO_COLUMN_NAME,
+    );
+    if (!priceFormula || !nameFormula || !expRatioFormula) {
+      throw new Error(
+        `Default formula not found for at least one of ${PRICE_COLUMN_NAME}, ${NAME_COLUMN_NAME}, or ${EXP_RATIO_COLUMN_NAME}`,
+      );
+    }
 
     // make sure the table is big enough
     helper.ensureRowCount(assetRows.length);
@@ -185,15 +193,23 @@ class AssetAllocationUpater {
     const classPctCol = assetRows.map((h) => [h.fraction]);
     const priceValues = assetRows.map((h) =>
       holdings.get(h.ticker)?.cusip ? null : holdings.get(h.ticker)?.price,
-    ); // TODO: this is too permissive
+    );
+    const expRatioValues = assetRows.map((r) =>
+      holdings.get(r.ticker)?.cusip
+        ? null
+        : (holdings.get(r.ticker)?.fundFees ?? 0) * 100,
+    );
     const priceFormulas = priceValues.map((p) => [
-      p == null ? PRICE_FORMULA : toLiteralFormula(p),
+      p == null ? priceFormula : toLiteralFormula(p),
     ]);
     const nameValues = assetRows.map((h) =>
       holdings.get(h.ticker)?.cusip ? null : h.ticker,
     );
     const nameFormulas = nameValues.map((n) => [
-      n == null ? NAME_FORMULA : toLiteralFormula(n),
+      n == null ? nameFormula : toLiteralFormula(n),
+    ]);
+    const expRatioFormulas = expRatioValues.map((e) => [
+      e == null ? expRatioFormula : toLiteralFormula(e),
     ]);
     // TODO: error checking
     getColumnRange(TICKER_COLUMN_NAME).setValues([
@@ -202,7 +218,7 @@ class AssetAllocationUpater {
     ]);
     getColumnRange(NAME_COLUMN_NAME).setValues([
       ...nameFormulas,
-      ...Array(padding).fill([PRICE_FORMULA]),
+      ...Array(padding).fill([priceFormula]),
     ]);
     getColumnRange(CLASS_COLUMN_NAME).setValues([
       ...classCol,
@@ -214,7 +230,11 @@ class AssetAllocationUpater {
     ]);
     getColumnRange(PRICE_COLUMN_NAME).setValues([
       ...priceFormulas,
-      ...Array(padding).fill([PRICE_FORMULA]),
+      ...Array(padding).fill([priceFormula]),
+    ]);
+    getColumnRange(EXP_RATIO_COLUMN_NAME).setValues([
+      ...expRatioFormulas,
+      ...Array(padding).fill([expRatioFormula]),
     ]);
   }
 
@@ -278,7 +298,7 @@ export function doPost(event: GoogleAppsScript.Events.DoPost) {
       accounts,
     } = JSON.parse(event.postData.contents) as PostPayload;
     console.log(`API version: ${major}.${minor}`);
-    const supported = { major: 0, minor: 4 };
+    const supported = { major: 0, minor: 5 };
     if (major !== supported.major || minor < supported.minor) {
       throw new Error(
         `data version ${major}.${minor} not supported, expected at least ${supported.major}.${supported.minor}`,

@@ -324,6 +324,23 @@ class TableHelper {
     return this.getRangeForColumns(tcolumnIndex, 1);
   }
 
+  getColumnDefaultFormula(columnName: string): string | undefined {
+    if (!this.isFormulaTable) {
+      throw new Error(`${this.state.gtable.name} is not a formula table`);
+    }
+    const tcolumnIndex = this.state.columnNameToIndex.get(columnName);
+    if (tcolumnIndex == null) {
+      return;
+    }
+    const gridRange = this.state.gtable.range;
+    return this.sheet
+      .getRange(
+        gridRange.endRowIndex,
+        gridRange.startColumnIndex + tcolumnIndex,
+      )
+      .getFormula();
+  }
+
   /*
    * Returns SpreadsheetApp Range for the table data
    */
