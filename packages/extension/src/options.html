@@ -4,14 +4,17 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Configuration - Empower Poster</title>
-  <!-- For wxt manifest.json auto-generation: -->
-  <meta name="manifest.open_in_tab" content="false" />
 </head>
 <body>
-  <label for="postUrl">URL of your web API for JSON POST requests.</label>
-  <input type="url" id="postUrl" placeholder="https://api.example.com/exec" required/>
+  <p>URLs of your web APIs for JSON POST requests.</p>
+  <div id="urlList"></div>
+  <button id="addButton" type="button">Add URL</button>
   <button id="saveButton">Authorize & Save</button>
   <div id="status"></div>
-  <script type="module" src="./options.ts"></script>
+  <script type="module">
+    import { initConfigForm } from "./config-form";
+
+    initConfigForm({ prefill: true, savedMessage: "Settings saved" });
+  </script>
 </body>
 </html>

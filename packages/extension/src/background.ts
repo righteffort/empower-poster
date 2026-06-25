@@ -5,13 +5,13 @@ import type {
   TokenRequest,
   TokenResponse,
 } from "./types";
-import { getPostUrl } from "./util";
+import { getPostUrls } from "./util";
 
 console.log(`Background script started at ${new Date()}`);
 
 chrome.runtime.onInstalled.addListener(async (details) => {
   console.log(`Extension installed at ${new Date()}`, details);
-  if (!(await getPostUrl())) {
+  if ((await getPostUrls()).length === 0) {
     chrome.tabs.create({ url: "src/onboarding.html" });
   }
 });
@@ -69,9 +69,9 @@ async function postData(
   data: any, // eslint-disable-line @typescript-eslint/no-explicit-any
 ): Promise<PostDataResponse> {
   try {
-    const postUrl = await getPostUrl();
-    if (!postUrl) {
-      throw new Error("POST URL not configured, can't post data");
+    const postUrls = await getPostUrls();
+    if (postUrls.length === 0) {
+      throw new Error("No POST URLs configured, can't post data");
     }
     if (!data.holdings || !data.classifications || !data.accounts) {
       console.log(`data=${JSON.stringify(data)}`);
@@ -92,24 +92,41 @@ async function postData(
       },
       body: JSON.stringify(payload),
     };
-    const r = await fetch(postUrl, options);
-    if (!r.ok) {
-      return { ok: false, message: `${r.status}: ${await r.text()}` };
-    }
-    const contentType = r.headers.get("content-type");
-    let detail: string;
-    let ok: boolean;
-    if (contentType?.includes("application/json")) {
-      const json = await r.json();
-      ok = json.success === true && !json.error;
-      detail = json.message || json.error || JSON.stringify(json);
-    } else {
-      detail = await r.text();
-      ok = !detail;
-    }
-    return { ok, message: detail };
+    const results = await Promise.all(
+      postUrls.map((url) => postToUrl(url, options)),
+    );
+    const ok = results.every((r) => r.ok);
+    const message = results.map((r) => `${r.url}: ${r.message}`).join("\n");
+    return { ok, message };
   } catch (e) {
     return {
+      ok: false,
+      message: e instanceof Error ? e.message : JSON.stringify(e),
+    };
+  }
+}
+
+async function postToUrl(
+  url: string,
+  options: RequestInit,
+): Promise<{ url: string; ok: boolean; message: string }> {
+  try {
+    const r = await fetch(url, options);
+    if (!r.ok) {
+      return { url, ok: false, message: `${r.status}: ${await r.text()}` };
+    }
+    const contentType = r.headers.get("content-type");
+    if (contentType?.includes("application/json")) {
+      const json = await r.json();
+      const ok = json.success === true && !json.error;
+      const message = json.message || json.error || JSON.stringify(json);
+      return { url, ok, message };
+    }
+    const detail = await r.text();
+    return { url, ok: !detail, message: detail };
+  } catch (e) {
+    return {
+      url,
       ok: false,
       message: e instanceof Error ? e.message : JSON.stringify(e),
     };

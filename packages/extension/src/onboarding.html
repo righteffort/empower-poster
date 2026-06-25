@@ -6,10 +6,18 @@
   <title>Configuration - Empower Poster</title>
 </head>
 <body>
-  <label for="postUrl">URL of your web API for JSON POST requests. You can change this later via options.</label>
-  <input type="url" id="postUrl" placeholder="https://api.example.com/exec" required/>
+  <p>URLs of your web APIs for JSON POST requests. You can change these later via options.</p>
+  <div id="urlList"></div>
+  <button id="addButton" type="button">Add URL</button>
   <button id="saveButton">Authorize & Save</button>
   <div id="status"></div>
-  <script type="module" src="./onboarding.ts"></script>
+  <script type="module">
+    import { initConfigForm } from "./config-form";
+
+    initConfigForm({
+      prefill: false,
+      savedMessage: "Settings saved, you may close this window.",
+    });
+  </script>
 </body>
 </html>
