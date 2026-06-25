@@ -118,7 +118,6 @@ class AssetAllocationUpater {
     const CLASS_COLUMN_NAME = "Class";
     const CLASS_PCT_COLUMN_NAME = "Class Pct";
     const PRICE_COLUMN_NAME = "Price";
-    const EXP_RATIO_COLUMN_NAME = "Exp Ratio";
     const flatAssets = Object.entries(this.classifications).flatMap(
       ([ticker, v]) =>
         v.map((c) => ({
@@ -164,12 +163,9 @@ class AssetAllocationUpater {
 
     const priceFormula = helper.getColumnDefaultFormula(PRICE_COLUMN_NAME);
     const nameFormula = helper.getColumnDefaultFormula(NAME_COLUMN_NAME);
-    const expRatioFormula = helper.getColumnDefaultFormula(
-      EXP_RATIO_COLUMN_NAME,
-    );
-    if (!priceFormula || !nameFormula || !expRatioFormula) {
+    if (!priceFormula || !nameFormula) {
       throw new Error(
-        `Default formula not found for at least one of ${PRICE_COLUMN_NAME}, ${NAME_COLUMN_NAME}, or ${EXP_RATIO_COLUMN_NAME}`,
+        `Default formula not found for ${PRICE_COLUMN_NAME} and/or ${NAME_COLUMN_NAME}`,
       );
     }
 
@@ -195,12 +191,6 @@ class AssetAllocationUpater {
       const h = holdings.get(r.ticker);
       return h?.cusip ? null : h?.price;
     });
-    const expRatioValues = assetRows.map((r) => {
-      const h = holdings.get(r.ticker);
-      if (h?.cusip != null) return null;
-      const fundFees = h?.fundFees;
-      return fundFees == null ? "" : fundFees * 100;
-    });
     const priceFormulas = priceValues.map((p) => [
       p == null ? priceFormula : toLiteralFormula(p),
     ]);
@@ -209,9 +199,6 @@ class AssetAllocationUpater {
     );
     const nameFormulas = nameValues.map((n) => [
       n == null ? nameFormula : toLiteralFormula(n),
-    ]);
-    const expRatioFormulas = expRatioValues.map((e) => [
-      e == null ? expRatioFormula : toLiteralFormula(e),
     ]);
     // TODO: error checking
     getColumnRange(TICKER_COLUMN_NAME).setValues([
@@ -233,10 +220,6 @@ class AssetAllocationUpater {
     getColumnRange(PRICE_COLUMN_NAME).setValues([
       ...priceFormulas,
       ...Array(padding).fill([priceFormula]),
-    ]);
-    getColumnRange(EXP_RATIO_COLUMN_NAME).setValues([
-      ...expRatioFormulas,
-      ...Array(padding).fill([expRatioFormula]),
     ]);
   }
 
