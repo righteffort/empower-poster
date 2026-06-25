@@ -83,7 +83,7 @@ export function getHoldingsAndAccounts(holdingsIn: HoldingEntryIn[]): {
         quantity: h.quantity,
         value: h.value,
         ticker: cleanTicker(h.ticker || "") || h.description || "",
-        ...(h.fundFees !== undefined && { fundFees: h.fundFees }),
+        fundFees: h.fundFees ?? null,
       });
     }
     if (userAccountId != null && accountName) {

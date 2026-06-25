@@ -6,7 +6,7 @@ export interface HoldingEntry {
   price: number;
   quantity: number;
   value: number;
-  fundFees?: number;
+  fundFees: number | null;
 }
 
 /**
