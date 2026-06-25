@@ -272,13 +272,14 @@ class TableHelper {
     // so that we can simply insert rows above it.
     const rowsActuallyNeeded = rowsNeeded + 1; // Preserve last row
     const totalRowsToAdd = rowsActuallyNeeded - numRows;
-    if (totalRowsToAdd > 0) {
-      // We'll assume a blank first column is a proxy for an empty row (some columns will contain default formulas)
-      if (this.sheet.getRange(lastRow, firstColumn).getDisplayValue() !== "") {
-        throw new OurError(
-          "Refusing to extend table with non-blank value in first column of the last row.",
-        );
-      }
+    if (totalRowsToAdd <= 0) {
+      return;
+    }
+    // We'll assume a blank first column is a proxy for an empty row (some columns will contain default formulas)
+    if (this.sheet.getRange(lastRow, firstColumn).getDisplayValue() !== "") {
+      throw new OurError(
+        "Refusing to extend table with non-blank value in first column of the last row.",
+      );
     }
     if (!this.state.hasUniqueLargestEndRowIndex) {
       throw new OurError(
@@ -336,7 +337,7 @@ class TableHelper {
     return this.sheet
       .getRange(
         gridRange.endRowIndex,
-        gridRange.startColumnIndex + tcolumnIndex,
+        gridRange.startColumnIndex + tcolumnIndex + 1,
       )
       .getFormula();
   }
