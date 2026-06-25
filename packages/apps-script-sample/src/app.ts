@@ -13,7 +13,15 @@ function writeHoldings(
   holdings: HoldingEntry[],
 ) {
   holdingsSheet.clear();
-  const headers = ["userAccountId", "ticker", "price", "quantity", "value"];
+  const headers = [
+    "userAccountId",
+    "ticker",
+    "price",
+    "quantity",
+    "value",
+    "cusip",
+    "fundFees",
+  ];
   holdingsSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
 
   if (holdings.length > 0) {
@@ -23,6 +31,8 @@ function writeHoldings(
       holding.price,
       holding.quantity,
       holding.value,
+      holding.cusip,
+      holding.fundFees ?? "",
     ]);
     holdingsSheet
       .getRange(2, 1, holdingsData.length, headers.length)

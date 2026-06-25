@@ -34,6 +34,7 @@ interface HoldingEntryIn {
   price: number;
   quantity: number;
   value: number;
+  fundFees?: number;
 }
 
 // Classification data returned by Empower. Exported for tests.
@@ -82,6 +83,7 @@ export function getHoldingsAndAccounts(holdingsIn: HoldingEntryIn[]): {
         quantity: h.quantity,
         value: h.value,
         ticker: cleanTicker(h.ticker || "") || h.description || "",
+        ...(h.fundFees !== undefined && { fundFees: h.fundFees }),
       });
     }
     if (userAccountId != null && accountName) {

@@ -6,6 +6,7 @@ export interface HoldingEntry {
   price: number;
   quantity: number;
   value: number;
+  fundFees?: number;
 }
 
 /**
@@ -37,7 +38,7 @@ export interface Account {
 export type Classifications = Record<string, Classification[]>;
 
 export interface PostPayload {
-  version: { major: 0; minor: 4 };
+  version: { major: 0; minor: 5 };
   holdings: HoldingEntry[];
   classifications: Classifications;
   accounts: Account[];

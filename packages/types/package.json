@@ -1,6 +1,6 @@
 {
   "name": "@righteffort/empower-poster-types",
-  "version": "0.2.7",
+  "version": "0.2.8",
   "description": "Type definitions for endpoints handling requests from the Empower Poster extension",
   "author": "Ted Romer <tromer@gmail.com>",
   "license": "MIT",
