@@ -33,7 +33,7 @@
     "fix": "yarn lint:fix && yarn format",
     "test:watch": "vitest",
     "test": "vitest run",
-    "ci": "yarn check && yarn test"
+    "ci": "yarn build:check && yarn test"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
