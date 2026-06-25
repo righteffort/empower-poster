@@ -29,6 +29,7 @@ interface GTable {
   range: {
     endColumnIndex: number;
     endRowIndex: number;
+    sheetId: number;
     startColumnIndex: number;
     startRowIndex: number;
   };
@@ -43,7 +44,6 @@ interface GSheet {
       columnCount: number;
     };
   };
-  tables: GTable[];
 }
 
 interface TableHelperState {
@@ -100,7 +100,6 @@ class TableHelper {
           columnCount: _gproperties.gridProperties?.columnCount ?? 0,
         },
       },
-      tables: [],
     };
     const _gtables = _gsheet.tables;
     const endRowIndices = (_gtables ?? []).map(
@@ -129,6 +128,7 @@ class TableHelper {
       range: {
         endColumnIndex: _gtable.range?.endColumnIndex ?? 0,
         endRowIndex: _gtable.range?.endRowIndex ?? 0,
+        sheetId: _gtable.range?.sheetId ?? 0,
         startColumnIndex: _gtable.range?.startColumnIndex ?? 0,
         startRowIndex: _gtable.range?.startRowIndex ?? 0,
       },

@@ -193,7 +193,7 @@ class AssetAllocationUpater {
     const classPctCol = assetRows.map((r) => [r.fraction]);
     const priceValues = assetRows.map((r) => {
       const h = holdings.get(r.ticker);
-      return h?.cusip ? null : h?.price
+      return h?.cusip ? null : h?.price;
     });
     const expRatioValues = assetRows.map((r) => {
       const h = holdings.get(r.ticker);
