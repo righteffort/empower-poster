@@ -1,0 +1,5 @@
+- extend Account Setup:
+- disambiguate {Corporate,Government} {Intl,U.S.} Bonds
+- provide isTaxDeferredOrNonTaxable from Empower via xhr to getAccounts2
+- update README.md here and in root
+- ditch vendor/src/sheets_v4.d.ts as soon as possible
