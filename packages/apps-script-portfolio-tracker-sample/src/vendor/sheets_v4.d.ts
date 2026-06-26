@@ -1727,8 +1727,3 @@ declare namespace MyGoogleAppsScript {
     newWaterfallChartSpec(): Sheets.Schema.WaterfallChartSpec;
   }
 }
-
-/**
- * The `Sheets` advanced service must be enabled.
- */
-declare var MySheets: MyGoogleAppsScript.Sheets | undefined;

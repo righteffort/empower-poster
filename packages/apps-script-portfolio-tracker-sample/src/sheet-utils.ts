@@ -9,7 +9,7 @@ export function makeTableHelper(
   tableName: string,
 ): TableHelper | undefined {
   try {
-    const sheetsService = MySheets;
+    const sheetsService = Sheets as MyGoogleAppsScript.Sheets;
     if (sheetsService == null) {
       throw new OurError("Must enable Sheets service");
     }
