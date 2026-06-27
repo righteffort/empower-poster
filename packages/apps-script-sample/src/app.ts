@@ -72,11 +72,28 @@ function writeAccounts(
   accounts: Account[],
 ) {
   accountsSheet.clear();
-  const headers = ["id", "name"];
+  const headers = [
+    "id",
+    "name",
+    "accountType",
+    "advisoryFeePercentage",
+    "balance",
+    "firmName",
+    "fundFees",
+    "isTaxDeferredOrNonTaxable",
+  ];
   accountsSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
-
   if (accounts.length > 0) {
-    const accountsData = accounts.map((account) => [account.id, account.name]);
+    const accountsData = accounts.map((account) => [
+      account.id,
+      account.name,
+      account.accountType,
+      account.advisoryFeePercentage,
+      account.balance,
+      account.firmName,
+      account.fundFees ?? "",
+      account.isTaxDeferredOrNonTaxable,
+    ]);
     accountsSheet
       .getRange(2, 1, accountsData.length, headers.length)
       .setValues(accountsData);
@@ -92,7 +109,7 @@ export function doPost(e: GoogleAppsScript.Events.DoPost) {
       accounts,
     } = JSON.parse(e.postData.contents) as PostPayload;
     console.log(`API version: ${major}.${minor}`);
-    const supported = { major: 0, minor: 4 };
+    const supported = { major: 0, minor: 6 };
     if (major !== supported.major || minor < supported.minor) {
       throw new Error(
         `data version ${major}.${minor} not supported, expected at least ${supported.major}.${supported.minor}`,

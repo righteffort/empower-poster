@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
-  getHoldingsAndAccounts,
+  getAccounts,
+  getHoldings,
   getClassifications,
 } from "../src/processing.js";
 import type {
@@ -10,22 +11,34 @@ import type {
 } from "../src/processing.js";
 import { globSync, readFileSync } from "fs";
 
-describe("getHoldingsAndAccounts", () => {
-  it("should run getHoldingsAndAccounts correctly", () => {
+describe("getAccounts", () => {
+  it("should run getAccounts correctly", () => {
+    for (const inputFile of globSync(
+      "{,private/}testdata/*getAccounts*-input.json",
+    )) {
+      const expectedFile = inputFile.replace("-input", "-expected");
+      const input = JSON.parse(readFileSync(inputFile, "utf-8"));
+      const actual = getAccounts(input);
+      // const actualFile = inputFile.replace("-input", "-actual");
+      // writeFileSync(actualFile, JSON.stringify(actual, null, 2));
+      const expected = JSON.parse(readFileSync(expectedFile, "utf-8"));
+      expect(new Set(actual)).toEqual(new Set(expected));
+    }
+  });
+});
+
+describe("getHoldings", () => {
+  it("should run getHoldings correctly", () => {
     for (const inputFile of globSync(
       "{,private/}testdata/*getHoldings*-input.json",
     )) {
       const expectedFile = inputFile.replace("-input", "-expected");
       const input = JSON.parse(readFileSync(inputFile, "utf-8"));
-      const actual = getHoldingsAndAccounts(input);
+      const actual = getHoldings(input);
       // const actualFile = inputFile.replace("-input", "-actual");
       // writeFileSync(actualFile, JSON.stringify(actual, null, 2));
-      const { holdings: actualHoldings, accounts: actualAccounts } = actual;
       const expected = JSON.parse(readFileSync(expectedFile, "utf-8"));
-      const { holdings: expectedHoldings, accounts: expectedAccounts } =
-        expected;
-      expect(new Set(actualHoldings)).toEqual(new Set(expectedHoldings));
-      expect(new Set(actualAccounts)).toEqual(new Set(expectedAccounts));
+      expect(new Set(actual)).toEqual(new Set(expected));
     }
   });
 });

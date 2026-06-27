@@ -636,10 +636,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/google-apps-script@npm:^2.0.8":
-  version: 2.0.9
-  resolution: "@types/google-apps-script@npm:2.0.9"
-  checksum: 10c0/cd7e8732cca1be057ee710e6077670ae01387b8e2d983f4d6582cc8fb90773de468a13c6bc26731c51aa9880790cd78bba49f586ea186a7fd50d4d63306a4b01
+"@types/google-apps-script@npm:^2.0.11":
+  version: 2.0.11
+  resolution: "@types/google-apps-script@npm:2.0.11"
+  checksum: 10c0/1c29a8462b106c8176e2839a9dcb0d6b39403e3026ce76e832b459fbf7f5787f4d98fa21540f05147cf6e0c3a4cbc7e81199ce2f554f2f2bd25066384ce05138
   languageName: node
   linkType: hard
 
@@ -956,7 +956,7 @@ __metadata:
   dependencies:
     "@rollup/plugin-node-resolve": "npm:^16.0.3"
     "@rollup/plugin-typescript": "npm:^12.3.0"
-    "@types/google-apps-script": "npm:^2.0.8"
+    "@types/google-apps-script": "npm:^2.0.11"
     eslint: "npm:^10.1.0"
     prettier: "npm:^3.8.1"
     rollup: "npm:^4.61.1"

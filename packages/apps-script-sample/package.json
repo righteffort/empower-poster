@@ -1,7 +1,7 @@
 {
   "name": "apps-script-samples",
   "private": true,
-  "version": "0.2.8",
+  "version": "0.2.9",
   "description": "Sample Apps Script Web App for use with Empower Poster extension",
   "author": "Ted Romer <tromer@gmail.com>",
   "license": "MIT",

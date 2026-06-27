@@ -80,7 +80,7 @@ async function postData(
       );
     }
     const payload: PostPayload = {
-      version: { major: 0, minor: 5 },
+      version: { major: 0, minor: 6 },
       holdings: data.holdings,
       classifications: data.classifications,
       accounts: data.accounts,

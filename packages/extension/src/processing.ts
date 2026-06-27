@@ -24,8 +24,21 @@ interface ClassificationErrorInternal {
   userAccountId: number;
 }
 
+// Account data returned by Empower
+export interface AccountIn {
+  accountType: string;
+  advisoryFeePercentage: number;
+  balance: number;
+  closedDate: string;
+  firmName: string;
+  fundFees?: number;
+  isTaxDeferredOrNonTaxable: boolean;
+  name: string;
+  userAccountId: number;
+}
+
 // Holding data returned by Empower
-interface HoldingEntryIn {
+export interface HoldingEntryIn {
   cusip?: string;
   accountName: string;
   userAccountId: number;
@@ -67,18 +80,28 @@ function cleanTicker(ticker: string): string {
   return ticker;
 }
 
-export function getHoldingsAndAccounts(holdingsIn: HoldingEntryIn[]): {
-  holdings: HoldingEntry[];
-  accounts: Account[];
-} {
+export function getAccounts(accountsIn: AccountIn[]): Account[] {
+  return accountsIn
+    .filter((a) => !a.closedDate)
+    .map((a) => ({
+      id: a.userAccountId,
+      accountType: a.accountType,
+      advisoryFeePercentage: a.advisoryFeePercentage,
+      balance: a.balance,
+      firmName: a.firmName,
+      fundFees: a.fundFees ?? null,
+      isTaxDeferredOrNonTaxable: a.isTaxDeferredOrNonTaxable,
+      name: a.name,
+    }));
+}
+
+export function getHoldings(holdingsIn: HoldingEntryIn[]): HoldingEntry[] {
   const holdings: HoldingEntry[] = [];
-  const accountMap = new Map<number, string>();
   holdingsIn.forEach((h) => {
-    const { userAccountId, accountName } = h;
     if (h.quantity !== 0) {
       holdings.push({
         cusip: h.cusip || "",
-        userAccountId,
+        userAccountId: h.userAccountId,
         price: h.price,
         quantity: h.quantity,
         value: h.value,
@@ -86,22 +109,8 @@ export function getHoldingsAndAccounts(holdingsIn: HoldingEntryIn[]): {
         fundFees: h.fundFees ?? null,
       });
     }
-    if (userAccountId != null && accountName) {
-      if (accountMap.has(userAccountId)) {
-        if (accountMap.get(userAccountId) !== accountName) {
-          console.warn(
-            `account ${userAccountId} already has name ${accountMap.get(userAccountId)}, dropping conflicting name ${accountName}`,
-          );
-        }
-      } else {
-        accountMap.set(userAccountId, accountName);
-      }
-    }
   });
-  const accounts = Array.from(accountMap.entries()).map(([id, name]) => {
-    return { id, name };
-  });
-  return { holdings, accounts };
+  return holdings;
 }
 
 // Flatten Empower classification data. Also return details for any negative allocations.
