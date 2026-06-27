@@ -9,10 +9,10 @@ export function makeTableHelper(
   tableName: string,
 ): TableHelper | undefined {
   try {
-    const sheetsService = Sheets as MyGoogleAppsScript.Sheets;
-    if (sheetsService == null) {
+    if (typeof Sheets === "undefined") {
       throw new OurError("Must enable Sheets service");
     }
+    const sheetsService = Sheets as MyGoogleAppsScript.Sheets;
     return new TableHelper(sheetsService, spreadsheetId, sheet, tableName);
   } catch (e) {
     if (e instanceof OurError) {
