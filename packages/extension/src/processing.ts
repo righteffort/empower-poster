@@ -31,7 +31,6 @@ export interface AccountIn {
   balance: number;
   closedDate: string;
   firmName: string;
-  fundFees?: number;
   isTaxDeferredOrNonTaxable: boolean;
   name: string;
   userAccountId: number;
@@ -89,7 +88,6 @@ export function getAccounts(accountsIn: AccountIn[]): Account[] {
       advisoryFeePercentage: a.advisoryFeePercentage,
       balance: a.balance,
       firmName: a.firmName,
-      fundFees: a.fundFees ?? null,
       isTaxDeferredOrNonTaxable: a.isTaxDeferredOrNonTaxable,
       name: a.name,
     }));

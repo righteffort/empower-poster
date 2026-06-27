@@ -8,6 +8,16 @@ import type {
   Account,
 } from "@righteffort/empower-poster-types";
 
+/**
+ * Add a leading apostrophe to purely numeric account names.
+ */
+function formatAccountName(accountName: string): string {
+  if (accountName.search(/^[0-9]+$/) == 0) {
+    return `'${accountName}`;
+  }
+  return accountName;
+}
+
 function writeHoldings(
   holdingsSheet: GoogleAppsScript.Spreadsheet.Sheet,
   holdings: HoldingEntry[],
@@ -79,19 +89,17 @@ function writeAccounts(
     "advisoryFeePercentage",
     "balance",
     "firmName",
-    "fundFees",
     "isTaxDeferredOrNonTaxable",
   ];
   accountsSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
   if (accounts.length > 0) {
     const accountsData = accounts.map((account) => [
       account.id,
-      account.name,
+      formatAccountName(account.name),
       account.accountType,
       account.advisoryFeePercentage,
       account.balance,
       account.firmName,
-      account.fundFees ?? "",
       account.isTaxDeferredOrNonTaxable,
     ]);
     accountsSheet

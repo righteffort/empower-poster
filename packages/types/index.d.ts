@@ -32,7 +32,6 @@ export interface Account {
   advisoryFeePercentage: number;
   balance: number;
   firmName: string;
-  fundFees: number | null;
   isTaxDeferredOrNonTaxable: boolean;
   name: string;
 }

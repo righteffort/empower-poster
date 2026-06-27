@@ -6,8 +6,7 @@
     "accountType": "IRA - Roth",
     "name": "My Roth IRA",
     "firmName": "Vanguard",
-    "isTaxDeferredOrNonTaxable": true,
-    "fundFees": 0.04
+    "isTaxDeferredOrNonTaxable": true
   },
   {
     "id": 3,
@@ -16,7 +15,6 @@
     "accountType": "Assets",
     "name": "1234 Main St",
     "firmName": "Home",
-    "isTaxDeferredOrNonTaxable": false,
-    "fundFees": null
+    "isTaxDeferredOrNonTaxable": false
   }
 ]
