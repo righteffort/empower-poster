@@ -28,6 +28,9 @@ const fetchDataScript = async (csrf: string, path: string, params: object) => {
       body,
     };
     const response = await fetch(api_url, options);
+    if (!response.ok) {
+      throw new Error(`${api_url} response status: ${response.status}`);
+    }
     const data = await response.json();
     return data;
   } catch (e) {
