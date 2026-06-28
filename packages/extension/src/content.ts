@@ -1,4 +1,5 @@
-import { getClassifications, getHoldingsAndAccounts } from "./processing";
+import { getAccounts, getClassifications, getHoldings } from "./processing";
+import type { ClassificationIn, HoldingEntryIn } from "./processing";
 import type {
   Account,
   Classifications,
@@ -8,16 +9,14 @@ import type { PostDataRequest, PostDataResponse, TokenResponse } from "./types";
 
 let csrf = "";
 
-const fetchDataScript = async (csrf: string) => {
+const fetchDataScript = async (csrf: string, path: string, params: object) => {
   try {
-    const api_url =
-      "https://pc-api.empower-retirement.com/api/invest/getHoldings";
+    const api_url = `https://pc-api.empower-retirement.com/${path}`;
     const body = new URLSearchParams({
-      userAccountIds: "[]",
-      classificationStyles: '["allocation"]',
       lastServerChangeId: "-1",
       csrf,
       apiClient: "WEB",
+      ...params,
     }).toString();
     const options = {
       referrer: "https://ira.empower-retirement.com/",
@@ -29,6 +28,9 @@ const fetchDataScript = async (csrf: string) => {
       body,
     };
     const response = await fetch(api_url, options);
+    if (!response.ok) {
+      throw new Error(`${api_url} response status: ${response.status}`);
+    }
     const data = await response.json();
     return data;
   } catch (e) {
@@ -62,17 +64,38 @@ button.onclick = async () => {
     if (!csrf) {
       throw new Error("Can't retrieve data. Not logged in?");
     }
-    const resultsJson = await fetchDataScript(csrf);
-
-    if (!resultsJson.spData) {
-      throw new Error("spData missing from JSON data, nothing to POST");
+    const getHoldingsRawData = (
+      await fetchDataScript(csrf, "api/invest/getHoldings", {
+        userAccountIds: "[]",
+        classificationStyles: '["allocation"]',
+      })
+    ).spData;
+    const classificationsIn: ClassificationIn[] =
+      getHoldingsRawData?.classifications?.[0]?.classifications;
+    if (classificationsIn == null) {
+      throw new Error(
+        "spData.classifications is missing required nested classifications holdings JSON, nothing to POST",
+      );
     }
-
-    const classificationsIn =
-      resultsJson.spData.classifications[0].classifications;
-    const { holdings, accounts } = getHoldingsAndAccounts(
-      resultsJson.spData.holdings,
-    );
+    const holdingsIn: HoldingEntryIn[] = getHoldingsRawData.holdings;
+    if (holdingsIn == null) {
+      throw new Error(
+        "spData.holdings missing from holdings JSON data, nothing to POST",
+      );
+    }
+    const accountsIn = (
+      await fetchDataScript(csrf, "api/newaccount/getAccounts2", {
+        userAccountIds: "[]",
+        classificationStyles: '["allocation"]',
+      })
+    ).spData?.accounts;
+    if (accountsIn == null) {
+      throw new Error(
+        "spData.accounts missing from accounts JSON data, nothing to POST",
+      );
+    }
+    const accounts = getAccounts(accountsIn);
+    const holdings = getHoldings(holdingsIn);
     const { classifications, errors: classificationsErrors } =
       getClassifications(classificationsIn);
 

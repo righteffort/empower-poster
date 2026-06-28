@@ -25,9 +25,14 @@ export interface Classification {
 export interface Account {
   /**
    The account id from Empower; referenced from `HoldingEntry.userAccountId`.
-   array.
+   array. Remaining fields are directly from Empower.
    */
   id: number;
+  accountType: string;
+  advisoryFeePercentage: number;
+  balance: number;
+  firmName: string;
+  isTaxDeferredOrNonTaxable: boolean;
   name: string;
 }
 
@@ -38,7 +43,7 @@ export interface Account {
 export type Classifications = Record<string, Classification[]>;
 
 export interface PostPayload {
-  version: { major: 0; minor: 5 };
+  version: { major: 0; minor: 6 };
   holdings: HoldingEntry[];
   classifications: Classifications;
   accounts: Account[];

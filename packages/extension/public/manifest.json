@@ -1,7 +1,7 @@
 {
   "name": "Empower Poster",
   "description": "Empower Poster Extension",
-  "version": "0.2.8.1",
+  "version": "0.2.9",
   "manifest_version": 3,
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA3wvMuIeaTabnQ5yPtpTMJVAMh6BWFqUwJW/A8Y3cqud+OV5eZv8B8q3ZKD53Se81+m6KN1mGDjrV8dQQY+7I9UP4+3K3qFGizbivCVPTOSPI1cPF3zKB1NGS1Po5wuKGAaGdtTl5EiSYPoM+DKSbAf9VOI0x9BnK6Vrge8/KGMNJ87mRGaRKstgWpTqYiArK1vnrb9FHNMPyGgkteTyJaKZk6S8GzXk+9Z36NDJOFjJblHijoZgxnzz13LWf2c2UYcDFM8UqV1Bh0LQTKi7rGp/BRsl+Dg9BcwHc/BDu7A/rlDwAOzkm+1LcRN7H5sJ5ztNqVHmNvw+XMWO6ulUPRwIDAQAB",
   "icons": {

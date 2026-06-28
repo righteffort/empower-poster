@@ -1,0 +1,20 @@
+[
+  {
+    "id": 1,
+    "balance": 3.14,
+    "advisoryFeePercentage": 0.00,
+    "accountType": "IRA - Roth",
+    "name": "My Roth IRA",
+    "firmName": "Vanguard",
+    "isTaxDeferredOrNonTaxable": true
+  },
+  {
+    "id": 3,
+    "balance": 17.29,
+    "advisoryFeePercentage": 0.00,
+    "accountType": "Assets",
+    "name": "1234 Main St",
+    "firmName": "Home",
+    "isTaxDeferredOrNonTaxable": false
+  }
+]

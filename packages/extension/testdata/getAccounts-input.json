@@ -1,0 +1,35 @@
+[
+  {
+    "extraneousField": "extraneous",
+    "userAccountId": 1,
+    "balance": 3.14,
+    "advisoryFeePercentage": 0.00,
+    "accountType": "IRA - Roth",
+    "name": "My Roth IRA",
+    "firmName": "Vanguard",
+    "isTaxDeferredOrNonTaxable": true,
+    "fundFees": 0.04,
+    "closedDate": ""
+  },
+  {
+    "userAccountId": 2,
+    "balance": 0.00,
+    "advisoryFeePercentage": 0.00,
+    "accountType": "Bank",
+    "name": "Old Checking",
+    "firmName": "My Hometown Banker",
+    "isTaxDeferredOrNonTaxable": false,
+    "fundFees": 0.00,
+    "closedDate": "2020-01-05"
+  },
+  {
+    "userAccountId": 3,
+    "balance": 17.29,
+    "advisoryFeePercentage": 0.00,
+    "accountType": "Assets",
+    "name": "1234 Main St",
+    "firmName": "Home",
+    "isTaxDeferredOrNonTaxable": false,
+    "closedDate": ""
+  }
+]
