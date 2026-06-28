@@ -4,6 +4,8 @@ import type {
   PostDataResponse,
   TokenRequest,
   TokenResponse,
+  TokenUpdate,
+  VisibilityUpdate,
 } from "./types";
 import { getPostUrls } from "./util";
 
@@ -25,17 +27,16 @@ chrome.webRequest.onBeforeRequest.addListener(
       csrf = csrfVal as string;
       console.log("Saved token");
       // Send CSRF token to all tabs with content script
+      const message: TokenUpdate = {
+        type: "TOKEN_UPDATE",
+        csrf,
+      };
       chrome.tabs.query({}).then((tabs) => {
         for (const tab of tabs) {
           if (tab.id) {
-            chrome.tabs
-              .sendMessage(tab.id, {
-                type: "TOKEN_UPDATE",
-                csrf,
-              })
-              .catch(() => {
-                // Ignore tabs that don't have content script loaded
-              });
+            chrome.tabs.sendMessage(tab.id, message).catch(() => {
+              // Ignore tabs that don't have content script loaded
+            });
           }
         }
       });
@@ -48,6 +49,23 @@ chrome.webRequest.onBeforeRequest.addListener(
   },
   ["requestBody"],
 );
+
+chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
+  if (!changeInfo.url) return;
+  let url: URL;
+  try {
+    url = new URL(changeInfo.url);
+  } catch {
+    return;
+  }
+  const message: VisibilityUpdate = {
+    type: "VISIBILITY_UPDATE",
+    show: url.pathname.startsWith("/dashboard/"),
+  };
+  chrome.tabs.sendMessage(tabId, message).catch(() => {
+    // Ignore tabs that don't have content script loaded
+  });
+});
 
 // Listen for post data message from content script
 chrome.runtime.onMessage.addListener(

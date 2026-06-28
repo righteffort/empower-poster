@@ -15,3 +15,13 @@ export interface PostDataResponse {
   ok: boolean;
   message?: string;
 }
+
+export interface TokenUpdate {
+  type: "TOKEN_UPDATE";
+  csrf: string;
+}
+
+export interface VisibilityUpdate {
+  type: "VISIBILITY_UPDATE";
+  show: boolean;
+}
