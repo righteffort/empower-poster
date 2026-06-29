@@ -16,7 +16,7 @@ export function makeTableHelper(
     return new TableHelper(sheetsService, spreadsheetId, sheet, tableName);
   } catch (e) {
     if (e instanceof OurError) {
-      console.log(e.message);
+      Logger.log(e.message);
       return;
     }
     throw e;
@@ -181,15 +181,6 @@ class TableHelper {
     const gridRange = this.state.gtable.range;
     const gridStartDataRowIndex = gridRange.startRowIndex + 1; // For header row
     const rowsToDelete = Array.from(rows).sort((a, b) => b - a); // Reverse so row numbers remain correct
-    const rangesToDelete = rowsToDelete.map((i) =>
-      this.sheet.getRange(
-        gridStartDataRowIndex + 1 + i,
-        gridRange.startColumnIndex + 1,
-        1,
-        gridRange.endColumnIndex - gridRange.startColumnIndex,
-      ),
-    );
-    console.log(rangesToDelete.map((r) => r.getA1Notation()));
     rowsToDelete.forEach((i) => {
       this.sheet
         .getRange(

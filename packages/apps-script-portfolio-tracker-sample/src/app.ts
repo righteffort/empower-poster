@@ -15,9 +15,9 @@ function fail(message: string): never {
 }
 
 /**
- * Add a leading apostrophe to purely numeric account names.
+ * Add a leading apostrophe to purely numeric account names and types.
  */
-function formatAccountName(accountName: string): string {
+function formatAccountNameOrType(accountName: string): string {
   if (accountName.search(/^[0-9]+$/) == 0) {
     return `'${accountName}`;
   }
@@ -79,7 +79,7 @@ class AssetAllocationUpater {
   }
   updateSpreadsheet() {
     this.updateAccountSetup();
-    this.updateAssetsAndCategories();
+    this.updateAssetSetup();
     this.updateHoldings();
   }
   private updateAccountSetup() {
@@ -163,8 +163,8 @@ class AssetAllocationUpater {
     const newValues = [...this.accountMap.values()]
       .sort((a: Account, b: Account) => a.name.localeCompare(b.name))
       .map((a) => [
-        a.name,
-        currentValues.get(a.name)?.type ?? "",
+        formatAccountNameOrType(a.name),
+        formatAccountNameOrType(currentValues.get(a.name)?.type ?? ""),
         a.firmName,
         currentValues.get(a.name)?.owner ?? "",
       ]);
@@ -208,9 +208,8 @@ class AssetAllocationUpater {
     const ACCOUNT_COLUMN_NAME = "Account";
     const ASSET_COLUMN_NAME = "Asset";
     const SHARES_COLUMN_NAME = "Shares";
-    // TODO: error checking
     getColumnRange(ACCOUNT_COLUMN_NAME).setValues([
-      ...accountCol.map((v) => [formatAccountName(v)]),
+      ...accountCol.map((v) => [formatAccountNameOrType(v)]),
       ...Array(padding).fill([""]),
     ]);
     getColumnRange(ASSET_COLUMN_NAME).setValues([
@@ -234,12 +233,7 @@ class AssetAllocationUpater {
     }
     return [parent, child];
   }
-  private updateAssetsAndCategories() {
-    const TICKER_COLUMN_NAME = "Ticker";
-    const NAME_COLUMN_NAME = "Name";
-    const CLASS_COLUMN_NAME = "Class";
-    const CLASS_PCT_COLUMN_NAME = "Class Pct";
-    const PRICE_COLUMN_NAME = "Price";
+  private updateAssetSetup() {
     const flatAssets = Object.entries(this.classifications).flatMap(
       ([ticker, v]) =>
         v.map((c) => ({
@@ -258,6 +252,21 @@ class AssetAllocationUpater {
     ).sort();
     this.updateAssetClasses(assetClasses);
     this.updateClassCategories(classCategories);
+    this.updateAssets(flatAssets);
+  }
+  updateAssets(
+    flatAssets: {
+      ticker: string;
+      classes: [string, string];
+      fraction: number;
+    }[],
+  ) {
+    const TICKER_COLUMN_NAME = "Ticker";
+    const NAME_COLUMN_NAME = "Name";
+    const CLASS_COLUMN_NAME = "Class";
+    const CLASS_PCT_COLUMN_NAME = "Class Pct";
+    const PRICE_COLUMN_NAME = "Price";
+    const EXP_RATIO_COLUMN_NAME = "Exp Ratio";
     const assetRows = flatAssets.map((a) => ({
       ticker: a.ticker,
       class: a.classes[1],
@@ -282,12 +291,14 @@ class AssetAllocationUpater {
     if (!nameColRange) {
       throw new Error(`Assets column ${NAME_COLUMN_NAME} not found`);
     }
-
     const priceFormula = helper.getColumnDefaultFormula(PRICE_COLUMN_NAME);
     const nameFormula = helper.getColumnDefaultFormula(NAME_COLUMN_NAME);
-    if (!priceFormula || !nameFormula) {
+    const expRatioFormula = helper.getColumnDefaultFormula(
+      EXP_RATIO_COLUMN_NAME,
+    );
+    if (!expRatioFormula || !priceFormula || !nameFormula) {
       throw new Error(
-        `Default formula not found for ${PRICE_COLUMN_NAME} and/or ${NAME_COLUMN_NAME}`,
+        `Default formula not found for one or more of ${PRICE_COLUMN_NAME}, ${NAME_COLUMN_NAME}, or ${EXP_RATIO_COLUMN_NAME}`,
       );
     }
 
@@ -316,13 +327,19 @@ class AssetAllocationUpater {
     const priceFormulas = priceValues.map((p) => [
       p == null ? priceFormula : toLiteralFormula(p),
     ]);
+    const expRatioValues = assetRows.map((r) => {
+      const h = holdings.get(r.ticker);
+      return h?.cusip ? null : h?.fundFees;
+    });
+    const expRatioFormulas = expRatioValues.map((p) => [
+      p == null ? expRatioFormula : toLiteralFormula(p),
+    ]);
     const nameValues = assetRows.map((r) =>
       holdings.get(r.ticker)?.cusip ? null : r.ticker,
     );
     const nameFormulas = nameValues.map((n) => [
       n == null ? nameFormula : toLiteralFormula(n),
     ]);
-    // TODO: error checking
     getColumnRange(TICKER_COLUMN_NAME).setValues([
       ...tickerCol,
       ...Array(padding).fill([""]),
@@ -342,6 +359,10 @@ class AssetAllocationUpater {
     getColumnRange(PRICE_COLUMN_NAME).setValues([
       ...priceFormulas,
       ...Array(padding).fill([priceFormula]),
+    ]);
+    getColumnRange(EXP_RATIO_COLUMN_NAME).setValues([
+      ...expRatioFormulas,
+      ...Array(padding).fill([expRatioFormula]),
     ]);
   }
 
@@ -417,7 +438,7 @@ export function doPost(event: GoogleAppsScript.Events.DoPost) {
       classifications,
       accounts,
     } = JSON.parse(event.postData.contents) as PostPayload;
-    console.log(`API version: ${major}.${minor}`);
+    Logger.log(`API version: ${major}.${minor}`);
     const supported = { major: 0, minor: 6 };
     if (major !== supported.major || minor < supported.minor) {
       throw new Error(
