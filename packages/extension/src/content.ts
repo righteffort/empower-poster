@@ -5,7 +5,13 @@ import type {
   Classifications,
   HoldingEntry,
 } from "@righteffort/empower-poster-types";
-import type { PostDataRequest, PostDataResponse, TokenResponse } from "./types";
+import type {
+  PostDataRequest,
+  PostDataResponse,
+  TokenResponse,
+  TokenUpdate,
+  VisibilityUpdate,
+} from "./types";
 
 let csrf = "";
 
@@ -190,13 +196,17 @@ async function postProcessedData(
   }
 }
 
-// Listen for token updates from background script
-chrome.runtime.onMessage.addListener((message) => {
-  if (message.type === "TOKEN_UPDATE" && message.csrf && !csrf) {
-    csrf = message.csrf;
-    container.style.display = "block";
-  }
-});
+// Listen for token updates and visibility changes from background script
+chrome.runtime.onMessage.addListener(
+  (message: TokenUpdate | VisibilityUpdate) => {
+    if (message.type === "TOKEN_UPDATE" && message.csrf) {
+      csrf = message.csrf;
+    }
+    if (message.type === "VISIBILITY_UPDATE" && message.show !== undefined) {
+      container.style.display = message.show ? "block" : "none";
+    }
+  },
+);
 
 // Fallback token request after 5 seconds
 setTimeout(async () => {
@@ -208,7 +218,6 @@ setTimeout(async () => {
 
       if (response.csrf) {
         csrf = response.csrf;
-        container.style.display = "block";
       }
     } catch (e) {
       console.log(
@@ -218,4 +227,7 @@ setTimeout(async () => {
   }
 }, 5000);
 
+container.style.display = window.location.pathname.startsWith("/dashboard/")
+  ? "block"
+  : "none";
 document.body.appendChild(container);
