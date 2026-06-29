@@ -116,18 +116,18 @@ export function doPost(e: GoogleAppsScript.Events.DoPost) {
       classifications,
       accounts,
     } = JSON.parse(e.postData.contents) as PostPayload;
-    console.log(`API version: ${major}.${minor}`);
+    Logger.log(`API version: ${major}.${minor}`);
     const supported = { major: 0, minor: 6 };
     if (major !== supported.major || minor < supported.minor) {
       throw new Error(
         `data version ${major}.${minor} not supported, expected at least ${supported.major}.${supported.minor}`,
       );
     }
-    console.log(`Received ${holdings.length} holdings`);
-    console.log(
+    Logger.log(`Received ${holdings.length} holdings`);
+    Logger.log(
       `Classifications for ${Object.keys(classifications).length} tickers`,
     );
-    console.log(`${accounts.length} accounts`);
+    Logger.log(`${accounts.length} accounts`);
     // Write data to sheets
     const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
     const classificationsSheet = spreadsheet.getSheetByName("classifications");

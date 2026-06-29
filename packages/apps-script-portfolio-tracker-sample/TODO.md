@@ -1,0 +1,8 @@
+- WIP doesn't fill in expense ratio from Empower
+- sort holdings by account then asset
+- shrink tables
+- prune blank rows at bottom of holdings and assets that will accumulate over time
+- update README.md here and in root
+- credit Buchal
+- ditch vendor/src/sheets_v4.d.ts as soon as possible
+- maybe: overwrite entirety of formula tables (other than bottom row)
