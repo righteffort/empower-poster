@@ -199,7 +199,7 @@ async function postProcessedData(
 // Listen for token updates and visibility changes from background script
 chrome.runtime.onMessage.addListener(
   (message: TokenUpdate | VisibilityUpdate) => {
-    if (message.type === "TOKEN_UPDATE" && message.csrf && !csrf) {
+    if (message.type === "TOKEN_UPDATE" && message.csrf) {
       csrf = message.csrf;
     }
     if (message.type === "VISIBILITY_UPDATE" && message.show !== undefined) {
