@@ -10,6 +10,10 @@ import type {
 
 import { makeTableHelper } from "./sheet-utils.js";
 
+function fail(message: string): never {
+  throw new Error(message);
+}
+
 /**
  * Add a leading apostrophe to purely numeric account names.
  */
@@ -26,6 +30,9 @@ function toLiteralFormula(val: string | boolean | number) {
   return "=" + val;
 }
 
+const ACCOUNT_SETUP_SHEET_NAME = "Account Setup";
+const INSTITUTIONS_TABLE_NAME = "Institutions";
+const ACCOUNTS_TABLE_NAME = "Accounts";
 const ASSET_SETUP_SHEET_NAME = "Asset Setup";
 const ASSETS_TABLE_NAME = "Assets";
 const ASSET_CLASSES_TABLE_NAME = "Asset Classes";
@@ -36,9 +43,10 @@ const HOLDINGS_TABLE_NAME = "Holdings";
 class AssetAllocationUpater {
   private readonly holdingsArray: HoldingEntry[];
   private readonly classifications: Record<string, Classification[]>;
-  private readonly accountMap: Map<number, string>;
+  private readonly accountMap: Map<number, Account>;
   private readonly spreadsheetId: string;
   private readonly spreadsheet: GoogleAppsScript.Spreadsheet.Spreadsheet;
+  private readonly accountSetupSheet: GoogleAppsScript.Spreadsheet.Sheet;
   private readonly assetSetupSheet: GoogleAppsScript.Spreadsheet.Sheet;
   private readonly holdingsSheet: GoogleAppsScript.Spreadsheet.Sheet;
 
@@ -47,24 +55,131 @@ class AssetAllocationUpater {
     classifications: Classifications,
     accounts: Account[],
   ) {
+    const allAccounts = new Map(accounts.map((a) => [a.id, a]));
+    const accountIds = [...new Set(holdingsArray.map((h) => h.userAccountId))];
+    this.accountMap = new Map(
+      accountIds.map((id) => [
+        id,
+        allAccounts.get(id) || fail("Unreachable code"),
+      ]),
+    );
     this.holdingsArray = holdingsArray;
     this.classifications = classifications;
-    this.accountMap = new Map(accounts.map((a) => [a.id, a.name]));
     this.spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
     this.spreadsheetId = this.spreadsheet.getId();
-    const assetSetupSheet = this.spreadsheet.getSheetByName(
-      ASSET_SETUP_SHEET_NAME,
-    );
-    const holdingsSheet = this.spreadsheet.getSheetByName(HOLDINGS_SHEET_NAME);
-    if (!assetSetupSheet || !holdingsSheet) {
-      throw new Error("classifications and/or holdings sheet missing");
-    }
-    this.assetSetupSheet = assetSetupSheet;
-    this.holdingsSheet = holdingsSheet;
+    this.accountSetupSheet =
+      this.spreadsheet.getSheetByName(ACCOUNT_SETUP_SHEET_NAME) ||
+      fail(`'${ACCOUNT_SETUP_SHEET_NAME}' sheet missing`);
+    this.assetSetupSheet =
+      this.spreadsheet.getSheetByName(ASSET_SETUP_SHEET_NAME) ||
+      fail(`'${ASSET_SETUP_SHEET_NAME}' sheet missing`);
+    this.holdingsSheet =
+      this.spreadsheet.getSheetByName(HOLDINGS_SHEET_NAME) ||
+      fail(`'${HOLDINGS_SHEET_NAME}' sheet missing`);
   }
   updateSpreadsheet() {
+    this.updateAccountSetup();
     this.updateAssetsAndCategories();
     this.updateHoldings();
+  }
+  private updateAccountSetup() {
+    this.updateInstitutions();
+    this.updateAccounts();
+  }
+  private updateInstitutions() {
+    const helper =
+      makeTableHelper(
+        this.spreadsheetId,
+        this.accountSetupSheet,
+        INSTITUTIONS_TABLE_NAME,
+      ) ?? fail(`${INSTITUTIONS_TABLE_NAME} table not found`);
+    const NAME_COLUMN_NAME = "Name";
+    const institutions = [
+      ...new Set([...this.accountMap.values()].map((a) => a.firmName)),
+    ].sort();
+    helper.ensureRowCount(institutions.length);
+    const range =
+      helper.getColumnRange(NAME_COLUMN_NAME) ??
+      fail(`${HOLDINGS_TABLE_NAME}:${NAME_COLUMN_NAME} not found`);
+    const padding = helper.getNumRows() - institutions.length;
+    range
+      .clearContent()
+      .setValues([
+        ...institutions.map((i) => [i]),
+        ...Array(padding).fill([""]),
+      ]);
+  }
+  private updateAccounts() {
+    // only show accounts from empower
+    // unconditionally show institution from empower (firmName)
+    // don't mess with owner *at all*
+    // preserve type if it is already there; if not leave blank
+    // clear extras
+    // this is probably the wrong place, but could guess at type->tax for user. seems silly though.
+    const helper =
+      makeTableHelper(
+        this.spreadsheetId,
+        this.accountSetupSheet,
+        ACCOUNTS_TABLE_NAME,
+      ) || fail(`${ACCOUNTS_TABLE_NAME} not found`);
+    const oldTableRange =
+      helper.getRange() ||
+      fail(`${ACCOUNTS_TABLE_NAME} table missing or has zero data rows`);
+    const NAME_COLUMN_NAME = "Name";
+    const TYPE_COLUMN_NAME = "Type";
+    const INSTITUTION_COLUMN_NAME = "Institution";
+    const OWNER_COLUMN_NAME = "Owner";
+    const checkPosition = (columnName: string, offset: number) => {
+      if (
+        (helper.getColumnRange(columnName)?.getColumn() ||
+          fail(`${ACCOUNTS_TABLE_NAME}:${columnName} missing`)) -
+          oldTableRange.getColumn() !=
+        offset
+      ) {
+        throw new Error(
+          `${ACCOUNTS_TABLE_NAME}:${columnName} in wrong position`,
+        );
+      }
+    };
+    checkPosition(NAME_COLUMN_NAME, 0);
+    checkPosition(TYPE_COLUMN_NAME, 1);
+    checkPosition(INSTITUTION_COLUMN_NAME, 2);
+    checkPosition(OWNER_COLUMN_NAME, 3);
+    const oldRange = this.accountSetupSheet.getRange(
+      oldTableRange.getRow(),
+      oldTableRange.getColumn(),
+      oldTableRange.getNumRows(),
+      4,
+    );
+    const currentValues = new Map(
+      oldRange.getValues().map((r) => [
+        r[0],
+        {
+          type: r[1],
+          owner: r[3],
+        },
+      ]),
+    );
+    const newValues = [...this.accountMap.values()]
+      .sort((a: Account, b: Account) => a.name.localeCompare(b.name))
+      .map((a) => [
+        a.name,
+        currentValues.get(a.name)?.type ?? "",
+        a.firmName,
+        currentValues.get(a.name)?.owner ?? "",
+      ]);
+    helper.ensureRowCount(newValues.length);
+    const padding = helper.getNumRows() - newValues.length;
+    const newTableRange = helper.getRange() || fail("Internal error");
+    const newRange = this.accountSetupSheet.getRange(
+      newTableRange.getRow(),
+      newTableRange.getColumn(),
+      newTableRange.getNumRows(),
+      4,
+    );
+    newRange
+      .clearContent()
+      .setValues([...newValues, ...Array(padding).fill(["", "", "", ""])]);
   }
   private updateHoldings() {
     const helper =
@@ -72,12 +187,7 @@ class AssetAllocationUpater {
         this.spreadsheetId,
         this.holdingsSheet,
         HOLDINGS_TABLE_NAME,
-      ) ??
-      (() => {
-        throw new Error(
-          `${HOLDINGS_SHEET_NAME}:${HOLDINGS_TABLE_NAME} not found`,
-        );
-      })();
+      ) ?? fail(`${HOLDINGS_SHEET_NAME}:${HOLDINGS_TABLE_NAME} not found`);
     helper.ensureRowCount(this.holdingsArray.length);
     const getColumnRange = (columnName: string) => {
       const result = helper.getColumnRange(columnName);
@@ -89,7 +199,8 @@ class AssetAllocationUpater {
     const padding = helper.getNumRows() - this.holdingsArray.length;
     const accountCol = this.holdingsArray.map(
       (h) =>
-        this.accountMap.get(h.userAccountId) ?? `Unknown: ${h.userAccountId}`,
+        this.accountMap.get(h.userAccountId)?.name ??
+        `Unknown: ${h.userAccountId}`,
     );
     const assetCol = this.holdingsArray.map((h) => h.ticker);
     const shareCol = this.holdingsArray.map((h) => h.quantity);
@@ -112,6 +223,17 @@ class AssetAllocationUpater {
     ]);
   }
 
+  private adjustClasses(classes: [string, string]): [string, string] {
+    const [parent, child] = classes;
+    if (!child) {
+      return [parent, parent];
+    }
+    const m = parent.match(/^(Intl|U.S.) /);
+    if (m) {
+      return [parent, `${m[1]} ${child}`];
+    }
+    return [parent, child];
+  }
   private updateAssetsAndCategories() {
     const TICKER_COLUMN_NAME = "Ticker";
     const NAME_COLUMN_NAME = "Name";
@@ -122,7 +244,7 @@ class AssetAllocationUpater {
       ([ticker, v]) =>
         v.map((c) => ({
           ticker,
-          classes: [c.classes[0], c.classes[1] || c.classes[0]],
+          classes: this.adjustClasses(c.classes),
           fraction: c.fraction,
         })),
     );
@@ -296,7 +418,7 @@ export function doPost(event: GoogleAppsScript.Events.DoPost) {
       accounts,
     } = JSON.parse(event.postData.contents) as PostPayload;
     console.log(`API version: ${major}.${minor}`);
-    const supported = { major: 0, minor: 5 };
+    const supported = { major: 0, minor: 6 };
     if (major !== supported.major || minor < supported.minor) {
       throw new Error(
         `data version ${major}.${minor} not supported, expected at least ${supported.major}.${supported.minor}`,
