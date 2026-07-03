@@ -10,7 +10,7 @@ import type {
 
 import { makeTableHelper } from "./sheet-utils.js";
 
-function fail(message: string): never {
+function fail(message = "Internal error"): never {
   throw new Error(message);
 }
 
@@ -18,7 +18,7 @@ function fail(message: string): never {
  * Add a leading apostrophe to purely numeric account names and types.
  */
 function formatAccountNameOrType(accountName: string): string {
-  if (accountName.search(/^[0-9]+$/) == 0) {
+  if (accountName.search(/^[0-9]+$/) === 0) {
     return `'${accountName}`;
   }
   return accountName;
@@ -84,7 +84,7 @@ class AssetAllocationUpater {
   }
   private updateAccountSetup() {
     this.updateInstitutions();
-    this.updateAccounts();
+    this.updateAccounts(true);
   }
   private updateInstitutions() {
     const helper =
@@ -97,19 +97,13 @@ class AssetAllocationUpater {
     const institutions = [
       ...new Set([...this.accountMap.values()].map((a) => a.firmName)),
     ].sort();
-    helper.ensureRowCount(institutions.length);
+    helper.updateRowCount(institutions.length);
     const range =
       helper.getColumnRange(NAME_COLUMN_NAME) ??
       fail(`${HOLDINGS_TABLE_NAME}:${NAME_COLUMN_NAME} not found`);
-    const padding = helper.getNumRows() - institutions.length;
-    range
-      .clearContent()
-      .setValues([
-        ...institutions.map((i) => [i]),
-        ...Array(padding).fill([""]),
-      ]);
+    range.clearContent().setValues(institutions.map((i) => [i]));
   }
-  private updateAccounts() {
+  private updateAccounts(pruneRows: boolean) {
     // only show accounts from empower
     // unconditionally show institution from empower (firmName)
     // don't mess with owner *at all*
@@ -168,27 +162,35 @@ class AssetAllocationUpater {
         a.firmName,
         currentValues.get(a.name)?.owner ?? "",
       ]);
-    helper.ensureRowCount(newValues.length);
-    const padding = helper.getNumRows() - newValues.length;
-    const newTableRange = helper.getRange() || fail("Internal error");
+    helper.updateRowCount(newValues.length, pruneRows);
+    const newTableRange = helper.getRange() || fail();
     const newRange = this.accountSetupSheet.getRange(
       newTableRange.getRow(),
       newTableRange.getColumn(),
       newTableRange.getNumRows(),
       4,
     );
-    newRange
-      .clearContent()
-      .setValues([...newValues, ...Array(padding).fill(["", "", "", ""])]);
+    newRange.setValues(newValues);
   }
   private updateHoldings() {
+    const holdingRows = this.holdingsArray
+      .map((h) => ({
+        accountName: this.accountMap.get(h.userAccountId)?.name ?? "Unknown",
+        ticker: h.ticker,
+        quantity: h.quantity,
+      }))
+      .sort(
+        (a, b) =>
+          a.accountName.localeCompare(b.accountName) ||
+          a.ticker.localeCompare(b.ticker),
+      );
     const helper =
       makeTableHelper(
         this.spreadsheetId,
         this.holdingsSheet,
         HOLDINGS_TABLE_NAME,
       ) ?? fail(`${HOLDINGS_SHEET_NAME}:${HOLDINGS_TABLE_NAME} not found`);
-    helper.ensureRowCount(this.holdingsArray.length);
+    helper.updateRowCount(holdingRows.length, true);
     const getColumnRange = (columnName: string) => {
       const result = helper.getColumnRange(columnName);
       if (result === undefined) {
@@ -196,30 +198,18 @@ class AssetAllocationUpater {
       }
       return result;
     };
-    const padding = helper.getNumRows() - this.holdingsArray.length;
-    const accountCol = this.holdingsArray.map(
-      (h) =>
-        this.accountMap.get(h.userAccountId)?.name ??
-        `Unknown: ${h.userAccountId}`,
-    );
-    const assetCol = this.holdingsArray.map((h) => h.ticker);
-    const shareCol = this.holdingsArray.map((h) => h.quantity);
+    const accountCol = holdingRows.map((h) => h.accountName);
+    const assetCol = holdingRows.map((h) => h.ticker);
+    const shareCol = holdingRows.map((h) => h.quantity);
 
     const ACCOUNT_COLUMN_NAME = "Account";
     const ASSET_COLUMN_NAME = "Asset";
     const SHARES_COLUMN_NAME = "Shares";
-    getColumnRange(ACCOUNT_COLUMN_NAME).setValues([
-      ...accountCol.map((v) => [formatAccountNameOrType(v)]),
-      ...Array(padding).fill([""]),
-    ]);
-    getColumnRange(ASSET_COLUMN_NAME).setValues([
-      ...assetCol.map((v) => [v]),
-      ...Array(padding).fill([""]),
-    ]);
-    getColumnRange(SHARES_COLUMN_NAME).setValues([
-      ...shareCol.map((v) => [v]),
-      ...Array(padding).fill([""]),
-    ]);
+    getColumnRange(ACCOUNT_COLUMN_NAME).setValues(
+      accountCol.map((v) => [formatAccountNameOrType(v)]),
+    );
+    getColumnRange(ASSET_COLUMN_NAME).setValues(assetCol.map((v) => [v]));
+    getColumnRange(SHARES_COLUMN_NAME).setValues(shareCol.map((v) => [v]));
   }
 
   private adjustClasses(classes: [string, string]): [string, string] {
@@ -242,17 +232,24 @@ class AssetAllocationUpater {
           fraction: c.fraction,
         })),
     );
+    const classCategories = [
+      ...new Set(flatAssets.map((a) => a.classes[0] ?? "")),
+    ];
+    const classCategoryParentMap = this.updateClassCategories(classCategories);
     const assetClasses = Array.from(
       new Set(flatAssets.map((a) => a.classes.join("\0"))),
     )
-      .sort()
-      .map((v) => v.split("\0"));
-    const classCategories = Array.from(
-      new Set(assetClasses.map((v) => v[0] || "")),
-    ).sort();
+      .map((v) => v.split("\0") as [string, string])
+      .sort(
+        (a: [string, string], b: [string, string]) =>
+          (classCategoryParentMap.get(a[0]) ?? "").localeCompare(
+            classCategoryParentMap.get(b[0]) ?? "",
+          ) ||
+          a[0].localeCompare(b[0]) ||
+          a[1].localeCompare(b[1]),
+      );
     this.updateAssetClasses(assetClasses);
-    this.updateClassCategories(classCategories);
-    this.updateAssets(flatAssets);
+    this.updateAssets(flatAssets, true);
   }
   updateAssets(
     flatAssets: {
@@ -260,18 +257,20 @@ class AssetAllocationUpater {
       classes: [string, string];
       fraction: number;
     }[],
+    pruneRows: boolean,
   ) {
     const TICKER_COLUMN_NAME = "Ticker";
     const NAME_COLUMN_NAME = "Name";
     const CLASS_COLUMN_NAME = "Class";
     const CLASS_PCT_COLUMN_NAME = "Class Pct";
     const PRICE_COLUMN_NAME = "Price";
-    const EXP_RATIO_COLUMN_NAME = "Exp Ratio";
-    const assetRows = flatAssets.map((a) => ({
-      ticker: a.ticker,
-      class: a.classes[1],
-      fraction: a.fraction,
-    }));
+    const assetRows = flatAssets
+      .map((a) => ({
+        ticker: a.ticker,
+        class: a.classes[1],
+        fraction: a.fraction,
+      }))
+      .sort((a, b) => a.ticker.localeCompare(b.ticker));
     const helper =
       makeTableHelper(
         this.spreadsheetId,
@@ -293,17 +292,8 @@ class AssetAllocationUpater {
     }
     const priceFormula = helper.getColumnDefaultFormula(PRICE_COLUMN_NAME);
     const nameFormula = helper.getColumnDefaultFormula(NAME_COLUMN_NAME);
-    const expRatioFormula = helper.getColumnDefaultFormula(
-      EXP_RATIO_COLUMN_NAME,
-    );
-    if (!expRatioFormula || !priceFormula || !nameFormula) {
-      throw new Error(
-        `Default formula not found for one or more of ${PRICE_COLUMN_NAME}, ${NAME_COLUMN_NAME}, or ${EXP_RATIO_COLUMN_NAME}`,
-      );
-    }
 
-    // make sure the table is big enough
-    helper.ensureRowCount(assetRows.length);
+    helper.updateRowCount(assetRows.length, pruneRows);
     // fill in ticker, class, pct (straightforward); and name and pct (mix of formulas -- no change -- or actual value, when there is no cusip).
     const getColumnRange = (columnName: string) => {
       const result = helper.getColumnRange(columnName);
@@ -312,7 +302,6 @@ class AssetAllocationUpater {
       }
       return result;
     };
-    const padding = helper.getNumRows() - assetRows.length;
     const holdings = new Map<string, HoldingEntry>(
       this.holdingsArray.map((h) => [h.ticker, h]),
     );
@@ -327,43 +316,17 @@ class AssetAllocationUpater {
     const priceFormulas = priceValues.map((p) => [
       p == null ? priceFormula : toLiteralFormula(p),
     ]);
-    const expRatioValues = assetRows.map((r) => {
-      const h = holdings.get(r.ticker);
-      return h?.cusip ? null : h?.fundFees;
-    });
-    const expRatioFormulas = expRatioValues.map((p) => [
-      p == null ? expRatioFormula : toLiteralFormula(p),
-    ]);
     const nameValues = assetRows.map((r) =>
       holdings.get(r.ticker)?.cusip ? null : r.ticker,
     );
     const nameFormulas = nameValues.map((n) => [
       n == null ? nameFormula : toLiteralFormula(n),
     ]);
-    getColumnRange(TICKER_COLUMN_NAME).setValues([
-      ...tickerCol,
-      ...Array(padding).fill([""]),
-    ]);
-    getColumnRange(NAME_COLUMN_NAME).setValues([
-      ...nameFormulas,
-      ...Array(padding).fill([nameFormula]),
-    ]);
-    getColumnRange(CLASS_COLUMN_NAME).setValues([
-      ...classCol,
-      ...Array(padding).fill([""]),
-    ]);
-    getColumnRange(CLASS_PCT_COLUMN_NAME).setValues([
-      ...classPctCol,
-      ...Array(padding).fill([""]),
-    ]);
-    getColumnRange(PRICE_COLUMN_NAME).setValues([
-      ...priceFormulas,
-      ...Array(padding).fill([priceFormula]),
-    ]);
-    getColumnRange(EXP_RATIO_COLUMN_NAME).setValues([
-      ...expRatioFormulas,
-      ...Array(padding).fill([expRatioFormula]),
-    ]);
+    getColumnRange(TICKER_COLUMN_NAME).setValues(tickerCol);
+    getColumnRange(NAME_COLUMN_NAME).setValues(nameFormulas);
+    getColumnRange(CLASS_COLUMN_NAME).setValues(classCol);
+    getColumnRange(CLASS_PCT_COLUMN_NAME).setValues(classPctCol);
+    getColumnRange(PRICE_COLUMN_NAME).setValues(priceFormulas);
   }
 
   private updateAssetClasses(assetClasses: string[][]) {
@@ -372,29 +335,24 @@ class AssetAllocationUpater {
       this.assetSetupSheet,
       ASSET_CLASSES_TABLE_NAME,
     );
-    if (assetClasses.length == 0) {
+    if (assetClasses.length === 0) {
       return;
     }
     if (!helper) {
       throw new Error(`${ASSET_CLASSES_TABLE_NAME} not found`);
     }
-    helper.ensureRowCount(assetClasses.length);
-    const padding = helper.getNumRows() - assetClasses.length;
+    helper.updateRowCount(assetClasses.length);
     const range = helper.getRange();
     if (range == null) {
       throw new Error(
         `Logic error, ${ASSET_CLASSES_TABLE_NAME} has zero data rows`,
       );
     }
-    range
-      .clearContent()
-      .setValues([
-        ...assetClasses.map((cs) => [cs[1], cs[0]]),
-        ...Array(padding).fill(["", ""]),
-      ]);
+
+    range.clearContent().setValues(assetClasses.map((cs) => [cs[1], cs[0]]));
   }
 
-  private updateClassCategories(classCategories: string[]) {
+  private updateClassCategories(incomingClassCategories: string[]) {
     const helper = makeTableHelper(
       this.spreadsheetId,
       this.assetSetupSheet,
@@ -404,29 +362,35 @@ class AssetAllocationUpater {
       throw new Error(`${CLASS_CATEGORIES_TABLE_NAME} not found`);
     }
     const NAME_COLUMN_NAME = "Name";
-    const range = helper.getColumnRange(NAME_COLUMN_NAME);
-    if (range == null) {
+    const table_range = helper.getRange();
+    if (table_range == null) {
+      throw new Error(`${CLASS_CATEGORIES_TABLE_NAME} not found`);
+    }
+    const name_range = helper.getColumnRange(NAME_COLUMN_NAME);
+    if (name_range == null) {
       throw new Error(
         `${CLASS_CATEGORIES_TABLE_NAME}:${NAME_COLUMN_NAME} not found`,
       );
     }
-    const existingCategoryNames = range.getValues().map((r) => r[0]);
-    const missingCategoryNames = classCategories.filter(
-      (c) => !existingCategoryNames.includes(c),
-    );
-    if (missingCategoryNames.length === 0) {
-      return;
+    if (
+      table_range.getNumColumns() !== 2 ||
+      name_range.getColumn() !== table_range.getColumn()
+    ) {
+      throw new Error(
+        `${CLASS_CATEGORIES_TABLE_NAME}:${NAME_COLUMN_NAME} has unexpected shape`,
+      );
     }
-    helper.ensureRowCount(
-      existingCategoryNames.length + missingCategoryNames.length,
+    const existingNameParents = new Map(
+      (table_range.getValues() as [string, string][]).filter((nameParent) =>
+        incomingClassCategories.includes(nameParent[0]),
+      ),
     );
-    const missingRange = this.assetSetupSheet.getRange(
-      range.getRow() + existingCategoryNames.length,
-      range.getColumn(),
-      missingCategoryNames.length,
-      range.getNumColumns(),
-    );
-    missingRange.setValues(missingCategoryNames.map((c) => [c]));
+    const allNameParents: [string, string][] = incomingClassCategories
+      .map((cc): [string, string] => [cc, existingNameParents.get(cc) ?? ""])
+      .sort((a, b) => a[1].localeCompare(b[1]) || a[0].localeCompare(b[0]));
+    helper.updateRowCount(allNameParents.length);
+    (helper.getRange() || fail()).setValues(allNameParents);
+    return existingNameParents;
   }
 }
 
