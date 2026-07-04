@@ -1,4 +1,4 @@
-// Make changes in https://github.com/righteffort/empower-poster/packages/apps-script-sample/src/
+// Make changes in https://github.com/righteffort/empower-poster/packages/apps-script-minimal/src/
 
 import type {
   PostPayload,

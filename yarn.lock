@@ -950,9 +950,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"apps-script-sample@workspace:packages/apps-script-sample":
+"apps-script-minimal@workspace:packages/apps-script-minimal":
   version: 0.0.0-use.local
-  resolution: "apps-script-sample@workspace:packages/apps-script-sample"
+  resolution: "apps-script-minimal@workspace:packages/apps-script-minimal"
   dependencies:
     "@rollup/plugin-node-resolve": "npm:^16.0.3"
     "@rollup/plugin-typescript": "npm:^12.3.0"
