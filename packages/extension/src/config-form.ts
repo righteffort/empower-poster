@@ -91,7 +91,7 @@ export function initConfigForm({ prefill, savedMessage }: ConfigFormOptions) {
     } catch (e) {
       const msg = `Failed: ${e instanceof Error ? e.message : e}`;
       showStatus(msg, "error");
-      console.log(msg);
+      Logger.log(msg);
     }
   });
 }

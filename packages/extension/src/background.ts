@@ -9,10 +9,10 @@ import type {
 } from "./types";
 import { getPostUrls } from "./util";
 
-console.log(`Background script started at ${new Date()}`);
+Logger.log(`Background script started at ${new Date()}`);
 
 chrome.runtime.onInstalled.addListener(async (details) => {
-  console.log(`Extension installed at ${new Date()}`, details);
+  Logger.log(`Extension installed at ${new Date()}`, details);
   if ((await getPostUrls()).length === 0) {
     chrome.tabs.create({ url: "src/onboarding.html" });
   }
@@ -25,7 +25,7 @@ chrome.webRequest.onBeforeRequest.addListener(
     const csrfVal = details?.requestBody?.formData?.["csrf"]?.[0];
     if (csrfVal && csrfVal !== csrf) {
       csrf = csrfVal as string;
-      console.log("Saved token");
+      Logger.log("Saved token");
       // Send CSRF token to all tabs with content script
       const message: TokenUpdate = {
         type: "TOKEN_UPDATE",
@@ -92,7 +92,7 @@ async function postData(
       throw new Error("No POST URLs configured, can't post data");
     }
     if (!data.holdings || !data.classifications || !data.accounts) {
-      console.log(`data=${JSON.stringify(data)}`);
+      Logger.log(`data=${JSON.stringify(data)}`);
       throw new Error(
         "holdings, classifications, or accounts missing from processed data",
       );

@@ -19,6 +19,6 @@ async function main() {
   const holdingsIn = getHoldings(spData.holdings);
   const holdings = getHoldings(holdingsIn);
   const classifications = getClassifications(classificationsIn);
-  console.log(JSON.stringify({ holdings, classifications }));
+  Logger.log(JSON.stringify({ holdings, classifications }));
 }
 await main();

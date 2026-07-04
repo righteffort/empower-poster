@@ -134,7 +134,7 @@ describe("getClassifications", () => {
       ) as ClassificationIn[];
       // const smallFile = inputFile.replace('-input','-small');
       // writeFileSync(smallFile, JSON.stringify(input.map(c => smallifyClassification(c)), null, 2));
-      // console.log(`wrote ${smallFile}`);
+      // Logger.log(`wrote ${smallFile}`);
       const actual = getClassifications(input);
       // const actualFile = inputFile.replace("-input", "-actual");
       // writeFileSync(actualFile, JSON.stringify(actual, null, 2));

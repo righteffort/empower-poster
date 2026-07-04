@@ -2,11 +2,11 @@
   "name": "empower-poster",
   "private": true,
   "license": "MIT",
-  "packageManager": "yarn@4.11.0",
+  "packageManager": "yarn@4.17.0",
   "workspaces": [
     "packages/*"
   ],
   "scripts": {
-    "ci": "yarn workspaces foreach -A run ci"
+    "ci": "yarn workspaces foreach -A install && yarn workspaces foreach -A run ci"
   }
 }

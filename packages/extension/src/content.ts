@@ -108,7 +108,7 @@ button.onclick = async () => {
     if (classificationsErrors.length > 0) {
       if (classificationsErrors.length > 20) {
         statusLine.innerHTML = `${classificationsErrors.length} negative categorizations found, see console for details`;
-        console.log("Negative categorizations:", classificationsErrors);
+        Logger.log("Negative categorizations:", classificationsErrors);
       } else {
         const errorList = classificationsErrors
           .map((error) => {
@@ -220,9 +220,7 @@ setTimeout(async () => {
         csrf = response.csrf;
       }
     } catch (e) {
-      console.log(
-        `token request failed: ${e instanceof Error ? e.message : e}`,
-      );
+      Logger.log(`token request failed: ${e instanceof Error ? e.message : e}`);
     }
   }
 }, 5000);
