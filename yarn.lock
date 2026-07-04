@@ -2,7 +2,7 @@
 # Manual changes might be lost - proceed with caution!
 
 __metadata:
-  version: 8
+  version: 10
   cacheKey: 10c0
 
 "@emnapi/core@npm:1.10.0":
@@ -950,9 +950,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"apps-script-samples@workspace:packages/apps-script-sample":
+"apps-script-sample@workspace:packages/apps-script-sample":
   version: 0.0.0-use.local
-  resolution: "apps-script-samples@workspace:packages/apps-script-sample"
+  resolution: "apps-script-sample@workspace:packages/apps-script-sample"
   dependencies:
     "@rollup/plugin-node-resolve": "npm:^16.0.3"
     "@rollup/plugin-typescript": "npm:^12.3.0"

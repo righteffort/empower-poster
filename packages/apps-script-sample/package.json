@@ -1,5 +1,5 @@
 {
-  "name": "apps-script-samples",
+  "name": "apps-script-sample",
   "private": true,
   "version": "0.2.9",
   "description": "Sample Apps Script Web App for use with Empower Poster extension",
@@ -15,7 +15,7 @@
     "build:redeploy": "yarn build:check && yarn redeploy",
     "redeploy": "./clasp-redeploy.sh",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint '{src,tests}/**/*.{js,ts}'",
+    "lint": "eslint './*.{js,ts}' '{src,tests}/**/*.{js,ts}'",
     "lint:fix": "yarn lint --fix",
     "format:check": "prettier './*.{js,ts}' '{src,tests}/**/*.{js,ts}' --check",
     "format": "prettier './*.{js,ts}' '{src,tests}/**/*.{js,ts}' --write",

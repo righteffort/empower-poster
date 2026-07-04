@@ -6,12 +6,12 @@ clasp push -f
 # Find the single non-HEAD deployment
 deployments_output=$(clasp list-deployments)
 deployment_id=$(echo "$deployments_output" |
-		    grep -e '^-' | 
+		    grep -e '^-' |
 		    awk '$3 != "@HEAD" {print $2}')
-[[ $(echo "$deployment_id" | wc -w) -eq 1 ]] || { 
+[[ $(echo "$deployment_id" | wc -w) -eq 1 ]] || {
     echo "FAILED. Script only works with exactly 1 non-HEAD deployment:
     $deployments_output";
-    exit 1; 
+    exit 1;
 }
 
 version_output=$(clasp create-version 'Untitled')
