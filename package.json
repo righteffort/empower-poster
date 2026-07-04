@@ -7,6 +7,6 @@
     "packages/*"
   ],
   "scripts": {
-    "ci": "yarn workspaces foreach -A install && yarn workspaces foreach -A run ci"
+    "ci": "yarn workspaces foreach -A run ci"
   }
 }
