@@ -2,32 +2,35 @@
 
 Browser extension that uploads holdings and asset classification data
 from [Empower](https://ira.empower-retirement.com/) (formerly Personal
-Capital) to a user-specified external HTTPS endpoint. For example, the
-endpoint could be an Apps Script web app bound to a Google Sheets
-spreadsheet, and could update the spreadsheet based on the uploaded
-data.
+Capital) to a user-specified external HTTPS endpoint. For example, you
+could update a Google Sheets spreadsheet with the data by having the endpoint be
+an Apps Script web app.
 
 ## Endpoint request/response API
 
-The types referenced below are defined in [`api.ts`](./packages/extension/src/api.ts).
+The complete definitions of the types referenced below are in the
+[`types` package](./packages/types/index.d.ts). It is available as a
+Node package,
+[@righteffort/empower-poster-types](https://www.npmjs.com/package/@righteffort/empower-poster-types).
 
 ### Request
 
 The extension makes HTTPS POST requests with `Content-Type:
 application/json`. The payload conforms to `PostPayload` and contains:
 - `version`: API version.
-- `holdings`: Array of `HoldingEntry` objects with cusip,
-  userAccountId, ticker, price, quantity, and value. `cusip` will
-  generally be blank for manual holdings, and non-blank for others.
+- `holdings`: Array of `HoldingEntry` objects with `cusip`,
+  `userAccountId`, `ticker`, `price`, `quantity`, `value`, and
+  `fundFees`. `cusip` will generally be blank for manual holdings, and
+  non-blank for others.
 - `classifications`: `Classifications` object mapping tickers to asset
   classifications.
-  - For each ticker there is one or more Classification entries, with
+  - For each ticker there are one or more Classification entries, with
   fractions that add to 1.
   - Each Classification has the asset class, asset subclass (possibly
   empty), and fraction.
-- accounts: Array of `Account` objects with id and name. `id` is
-  referenced by `HoldingEntry.userAccountId` and is unique in the
-  array.
+- accounts: Array of `Account` objects with `id`, `name`, and other
+  details about the account. `id` is referenced by
+  `HoldingEntry.userAccountId` and is unique in the array.
 
 ### Response
 
@@ -40,26 +43,37 @@ body should conform to one of the response types:
 
 The extension interprets the response to the POST request as follows:
 - Non-2xx HTTPS status codes are treated as failures.
-- Content-Type `application/json`: success based on the `success` field in the JSON response body.
+- Content-Type `application/json`: success based on the boolean `success` field in the JSON response body.
 - Other values of Content-Types: empty body indicates success, non-empty is a failure message.
 
 ## Using in Google Sheets Apps Script
 
-You can start by making a copy of [this spreadsheet](https://docs.google.com/spreadsheets/d/1UlLLp5KLMbtYUJEV35B92Rj7j8ivbopPp-INh4W8lYw/edit)
+> [!IMPORTANT]
+> Whenever you make changes to your Apps Script code, you must deploy
+> the new version of the code -- see [Deployment
+> Management](#deployment-management) below.
 
-### Apps Script Template
+### Basic example
+
+You can start by making a copy of [this
+spreadsheet](https://docs.google.com/spreadsheets/d/1UlLLp5KLMbtYUJEV35B92Rj7j8ivbopPp-INh4W8lYw/edit),
+which simply copies each of `holdings`, `classifications`, and
+`accounts` to a separate sheet. The code is compiled from the source
+in the [apps-script-minimal](./packages/apps-script-minimal) package.
+
+### Minimal sample Apps Script code
 
 ```javascript
 function doPost(e) {
   try {
     const {version: {major, minor}, holdings, classifications, accounts} = JSON.parse(e.postData.contents);
-    if (major !== 0 || minor < 4) {
+    if (major !== 0 || minor < 6) {
         throw new Error(`data version ${major}.${minor} not supported`);
     }
-    console.log(`API version: ${major}.${minor}`);
-    console.log(`Received ${holdings.length} holdings`);
-    console.log(`Classifications for ${Object.keys(classifications).length} tickers`);
-    console.log(`${accounts.length} accounts`);
+    Logger.log(`API version: ${major}.${minor}`);
+    Logger.log(`Received ${holdings.length} holdings`);
+    Logger.log(`Classifications for ${Object.keys(classifications).length} tickers`);
+    Logger.log(`${accounts.length} accounts`);
     
     // Process data here (e.g., write to spreadsheet)
     
@@ -111,7 +125,8 @@ clasp update-deployment --deploymentId YOUR_DEPLOYMENT_ID --version VERSION_NUMB
 
 ## References
 
+* This extension's [Chrome Web Store listing](https://chromewebstore.google.com/detail/empower-poster/lfjdkpiggkdkglapfjbifhgfhmilcmim).
+* The [@righteffort/empower-poster-types](https://www.npmjs.com/package/@righteffort/empower-poster-types) package on npmjs.
 * [Google guide to Apps Script Web Apps](https://developers.google.com/apps-script/guides/web).
 * [clasp](https://github.com/google/clasp?tab=readme-ov-file#clasp).
 * [Empower](https://ira.empower-retirement.com/).
-* This extension's [Chrome Web Store listing](https://chromewebstore.google.com/detail/empower-poster/lfjdkpiggkdkglapfjbifhgfhmilcmim).
