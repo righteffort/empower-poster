@@ -967,6 +967,23 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"apps-script-portfolio-tracker@workspace:packages/apps-script-portfolio-tracker":
+  version: 0.0.0-use.local
+  resolution: "apps-script-portfolio-tracker@workspace:packages/apps-script-portfolio-tracker"
+  dependencies:
+    "@rollup/plugin-node-resolve": "npm:^16.0.3"
+    "@rollup/plugin-typescript": "npm:^12.3.0"
+    "@types/google-apps-script": "npm:^2.0.11"
+    eslint: "npm:^10.1.0"
+    prettier: "npm:^3.8.1"
+    rollup: "npm:^4.61.1"
+    tslib: "npm:^2.8.1"
+    typescript: "npm:^6.0.2"
+    typescript-eslint: "npm:^8.57.2"
+    vitest: "npm:^4.1.8"
+  languageName: unknown
+  linkType: soft
+
 "assertion-error@npm:^2.0.1":
   version: 2.0.1
   resolution: "assertion-error@npm:2.0.1"
