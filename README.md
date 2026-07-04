@@ -61,6 +61,15 @@ which simply copies each of `holdings`, `classifications`, and
 `accounts` to a separate sheet. The code is compiled from the source
 in the [apps-script-minimal](./packages/apps-script-minimal) package.
 
+### Advanced example: Updating Portofolio Tracker by Dan Buchal
+
+The
+[apps-script-portfolio-tracker](./packages/apps-script-portfolio-tracker)
+package demonstrates how you could use the data from Empower to
+automatically update the holdings, asset allocations, and other tables
+in your copy of version 2.1.1 of Dan Buchal's very cool [Portfolio
+Tracker Google Sheet](https://github.com/danbuchal/portfolio-tracker).
+
 ### Minimal sample Apps Script code
 
 ```javascript

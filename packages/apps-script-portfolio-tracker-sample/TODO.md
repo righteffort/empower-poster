@@ -1,4 +1,0 @@
-- update README.md here and in root
-- credit Buchal
-- ditch vendor/src/sheets_v4.d.ts as soon as possible
-- maybe: overwrite entirety of formula tables (other than bottom row)

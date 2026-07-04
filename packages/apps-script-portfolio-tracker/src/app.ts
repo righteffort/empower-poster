@@ -1,4 +1,4 @@
-// Make changes in https://github.com/righteffort/empower-poster/packages/apps-script-portfolio-tracker-sample/src/
+// Make changes in https://github.com/righteffort/empower-poster/packages/apps-script-portfolio-tracker/src/
 import type {
   PostPayload,
   PostResponse,

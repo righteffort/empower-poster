@@ -950,9 +950,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"apps-script-portfolio-tracker-sample@workspace:packages/apps-script-portfolio-tracker-sample":
+"apps-script-minimal@workspace:packages/apps-script-minimal":
   version: 0.0.0-use.local
-  resolution: "apps-script-portfolio-tracker-sample@workspace:packages/apps-script-portfolio-tracker-sample"
+  resolution: "apps-script-minimal@workspace:packages/apps-script-minimal"
   dependencies:
     "@rollup/plugin-node-resolve": "npm:^16.0.3"
     "@rollup/plugin-typescript": "npm:^12.3.0"
@@ -967,9 +967,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"apps-script-minimal@workspace:packages/apps-script-minimal":
+"apps-script-portfolio-tracker@workspace:packages/apps-script-portfolio-tracker":
   version: 0.0.0-use.local
-  resolution: "apps-script-minimal@workspace:packages/apps-script-minimal"
+  resolution: "apps-script-portfolio-tracker@workspace:packages/apps-script-portfolio-tracker"
   dependencies:
     "@rollup/plugin-node-resolve": "npm:^16.0.3"
     "@rollup/plugin-typescript": "npm:^12.3.0"
