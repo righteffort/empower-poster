@@ -68,7 +68,10 @@ The
 package demonstrates how you could use the data from Empower to
 automatically update the holdings, asset allocations, and other tables
 in your copy of version 2.1.1 of Dan Buchal's very cool [Portfolio
-Tracker Google Sheet](https://github.com/danbuchal/portfolio-tracker).
+Tracker Google
+Sheet](https://github.com/danbuchal/portfolio-tracker). You will need
+to enable the Google Sheets API service in the Services menu in Apps
+Script.
 
 ### Minimal sample Apps Script code
 

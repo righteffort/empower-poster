@@ -100,7 +100,7 @@ class AssetAllocationUpater {
     helper.updateRowCount(institutions.length);
     const range =
       helper.getColumnRange(NAME_COLUMN_NAME) ??
-      fail(`${HOLDINGS_TABLE_NAME}:${NAME_COLUMN_NAME} not found`);
+      fail(`${INSTITUTIONS_TABLE_NAME}:${NAME_COLUMN_NAME} not found`);
     range.clearContent().setValues(institutions.map((i) => [i]));
   }
   private updateAccounts(pruneRows: boolean) {
