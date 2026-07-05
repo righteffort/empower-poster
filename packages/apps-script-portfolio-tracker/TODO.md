@@ -18,7 +18,7 @@ maybe simplify
 ```javascript
 // standard formula descriptors
 // ugh what about that final row that we're not allowed to write to???
-// standard columns produce `=EMPOWER_VALUE("${tableName}", "${columnName}", ROW(Single(${tableName.replaceAll(' ', '_')}[${columnName}])) - 2)`],
+// standard columns produce `=EMPOWER_VALUE("${tableName}", "${columnName}", ROW(Single(${tableName.replaceAll(' ', '_')}[${columnName}])) - 2)`,
 [
   {
     sheetName: "Holdings",
