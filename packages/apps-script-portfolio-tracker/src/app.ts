@@ -84,19 +84,23 @@ class FormulaInstaller {
     const oldFormulas = lastRowRange.getFormulas()[0];
     const columnNamesToUpdate: string[] = [];
     columnIndicesByName.forEach((index: number, name: string) => {
-      if (oldFormulas?.[index] !== newFormulasByColumnName.get(name)) {
-        columnNamesToUpdate.push(name);
+      const newFormula: string | undefined = newFormulasByColumnName.get(name);
+      if (newFormula) {
+        if (oldFormulas?.[index] !== newFormula) {
+          columnNamesToUpdate.push(name);
+        } else {
+          console.log(`Skipping ${tableName} ${name}`);
+        }
       }
     });
     if (!columnNamesToUpdate) {
       return;
     }
     console.log(
-      `Time to insertCells '${sheet.getName}'!${lastRowRange.getA1Notation}`,
+      `Time to insertCells '${lastRowRange.getSheet().getSheetName()}'!${lastRowRange.getA1Notation()}`,
     );
-    // TODO: really insert a dummy row at the bottom of the table to
     // Work around https://issuetracker.google.com/issues/525219695 by inserting and later deleting a dummy row at the bottom of the table
-    // lastRowRange.insertCells(SpreadsheetApp.Dimension.ROWS);
+    lastRowRange.insertCells(SpreadsheetApp.Dimension.ROWS);
     const dummyRowRange = sheet.getRange(
       lastRowRange.getRow() + 1,
       lastRowRange.getColumn(),
@@ -107,22 +111,26 @@ class FormulaInstaller {
     columnNamesToUpdate.forEach((columnName) => {
       // TODO write the formulas in each column but not in the dummy row
       const columnRange = sheet.getRange(
-        tableStartRowIndex + 2,
+        tableStartRowIndex + 2, // +1 for 1-offset, +1 for header row
         tableStartColumnIndex +
           (columnIndicesByName.get(columnName) ?? fail()) +
           1,
-        tableEndRowIndex - tableStartRowIndex,
+        tableEndRowIndex - tableStartRowIndex - 1, // -1 for header row
         1,
       );
       console.log(
-        `Time to fill '${sheet.getName}'!${columnRange.getA1Notation} with ${newFormulasByColumnName.get(columnName)}`,
+        `Time to fill '${columnRange.getSheet().getSheetName()}'!${columnRange.getA1Notation()} with ${newFormulasByColumnName.get(columnName)}`,
+      );
+      columnRange.setFormulas(
+        new Array(columnRange.getNumRows()).fill([
+          newFormulasByColumnName.get(columnName),
+        ]),
       );
     });
     console.log(
-      `Time to deleteCells '${sheet.getName}'!${dummyRowRange.getA1Notation}`,
+      `Time to deleteCells '${dummyRowRange.getSheet().getSheetName()}'!${dummyRowRange.getA1Notation()}`,
     );
-    // TODO really delete the dummy row.
-    // dummyRowRange.deleteCells(SpreadsheetApp.Dimension.ROWS);
+    dummyRowRange.deleteCells(SpreadsheetApp.Dimension.ROWS);
   }
 
   private installSheetColumnFormulas(
