@@ -1611,6 +1611,8 @@ declare namespace MyGoogleAppsScript {
         newSpreadsheet(): Sheets.Schema.Spreadsheet;
         // Create a new instance of SpreadsheetProperties
         newSpreadsheetProperties(): Sheets.Schema.SpreadsheetProperties;
+        // Create a new instance of Table
+        newTable(): Sheets.Schema.Table;
         // Create a new instance of TextFormat
         newTextFormat(): Sheets.Schema.TextFormat;
         // Create a new instance of TextFormatRun

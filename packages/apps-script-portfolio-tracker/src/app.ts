@@ -36,12 +36,37 @@ function fail(message = "Internal error"): never {
 class FormulaInstaller {
   private sheetsService: MyGoogleAppsScript.Sheets;
   private spreadsheet: GoogleAppsScript.Spreadsheet.Spreadsheet;
+  private spreadsheetId: string;
   constructor(
     sheetsService: MyGoogleAppsScript.Sheets,
     spreadsheet: GoogleAppsScript.Spreadsheet.Spreadsheet,
   ) {
     this.sheetsService = sheetsService;
     this.spreadsheet = spreadsheet;
+    this.spreadsheetId = this.spreadsheet.getId();
+  }
+  private setTableEndRowIndex(
+    gtable: MyGoogleAppsScript.Sheets.Schema.Table,
+    endRowIndex: number,
+  ) {
+    const utr = this.sheetsService.newUpdateTableRequest();
+    utr.fields = "range";
+    utr.table = this.sheetsService.newTable();
+    utr.table.tableId = gtable.tableId;
+    const oldRange = gtable.range || fail();
+    console.log(`oldRange: ${JSON.stringify(oldRange, null, 2)}`);
+    utr.table.range = this.sheetsService.newGridRange();
+    utr.table.range.endColumnIndex = oldRange.endColumnIndex;
+    utr.table.range.sheetId = oldRange.sheetId;
+    utr.table.range.startColumnIndex = oldRange.startColumnIndex;
+    utr.table.range.startRowIndex = oldRange.startRowIndex;
+    utr.table.range.endRowIndex = endRowIndex;
+    const req = this.sheetsService.newRequest();
+    req.updateTable = utr;
+    const busr = this.sheetsService.newBatchUpdateSpreadsheetRequest();
+    busr.requests = [req];
+    console.log(`Time to update table range: ${JSON.stringify(busr, null, 2)}`);
+    // TODO this.sheetsService.Spreadsheets.batchUpdate(busr, this.spreadsheetId);
   }
   private installTableColumnFormulas(
     sheet: GoogleAppsScript.Spreadsheet.Sheet,
@@ -96,41 +121,50 @@ class FormulaInstaller {
     if (!columnNamesToUpdate) {
       return;
     }
-    console.log(
-      `Time to insertCells '${lastRowRange.getSheet().getSheetName()}'!${lastRowRange.getA1Notation()}`,
-    );
-    // Work around https://issuetracker.google.com/issues/525219695 by inserting and later deleting a dummy row at the bottom of the table
-    lastRowRange.insertCells(SpreadsheetApp.Dimension.ROWS);
-    const dummyRowRange = sheet.getRange(
-      lastRowRange.getRow() + 1,
-      lastRowRange.getColumn(),
-      1,
-      lastRowRange.getNumColumns(),
-    );
-    // TODO write the formulas in each column but not in the dummy row
+    // Work around https://issuetracker.google.com/issues/525219695 by overwriting all but the last row.
+    // Fail if there are fewer than 2 data rows.
+    const numRowsToWrite = tableEndRowIndex - tableStartRowIndex - 2; // -1 for header row, -1 to preserve last row
+    if (numRowsToWrite <= 0) {
+      throw new Error(
+        `Can't deal with table ${tableName} with fewer than 2 data rows`,
+      );
+    }
     columnNamesToUpdate.forEach((columnName) => {
-      // TODO write the formulas in each column but not in the dummy row
       const columnRange = sheet.getRange(
         tableStartRowIndex + 2, // +1 for 1-offset, +1 for header row
         tableStartColumnIndex +
           (columnIndicesByName.get(columnName) ?? fail()) +
           1,
-        tableEndRowIndex - tableStartRowIndex - 1, // -1 for header row
+        numRowsToWrite,
         1,
       );
       console.log(
         `Time to fill '${columnRange.getSheet().getSheetName()}'!${columnRange.getA1Notation()} with ${newFormulasByColumnName.get(columnName)}`,
       );
+      /*
+      TODO:
       columnRange.setFormulas(
         new Array(columnRange.getNumRows()).fill([
           newFormulasByColumnName.get(columnName),
         ]),
       );
+       */
     });
+    this.setTableEndRowIndex(gtable, (gtable.range?.endRowIndex ?? fail()) - 1);
     console.log(
-      `Time to deleteCells '${dummyRowRange.getSheet().getSheetName()}'!${dummyRowRange.getA1Notation()}`,
+      `Time to deleteCells '${lastRowRange.getSheet().getSheetName()}'!${lastRowRange.getA1Notation()}`,
     );
-    dummyRowRange.deleteCells(SpreadsheetApp.Dimension.ROWS);
+    // TODO: lastRowRange.deleteCells(SpreadsheetApp.Dimension.ROWS);
+    const replacementRowRange = sheet.getRange(
+      lastRowRange.getRow() + -1,
+      lastRowRange.getColumn(),
+      1,
+      lastRowRange.getNumColumns(),
+    );
+    console.log(
+      `Time to insertCells '${replacementRowRange.getSheet().getSheetName()}'!${replacementRowRange.getA1Notation()}`,
+    );
+    // TODO: lastRowRange.insertCells(SpreadsheetApp.Dimension.ROWS);
   }
 
   private installSheetColumnFormulas(
@@ -215,11 +249,13 @@ class FormulaInstaller {
         ],
       },
     ];
-    const spreadsheetId = this.spreadsheet.getId();
-    const gspreadsheet = this.sheetsService.Spreadsheets.get(spreadsheetId, {
-      fields:
-        "sheets(properties(sheetId,title,gridProperties(rowCount,columnCount)),tables(tableId,name,range,columnProperties))",
-    });
+    const gspreadsheet = this.sheetsService.Spreadsheets.get(
+      this.spreadsheetId,
+      {
+        fields:
+          "sheets(properties(sheetId,title,gridProperties(rowCount,columnCount)),tables(tableId,name,range,columnProperties))",
+      },
+    );
     const sheetsByTitle = new Map(
       gspreadsheet?.sheets?.map((s) => [s.properties?.title, s]),
     );
