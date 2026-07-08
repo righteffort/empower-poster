@@ -12,7 +12,7 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/righteffort/empower-poster.git",
-    "directory": "node/fidelity-helper"
+    "directory": "packages/extension"
   },
   "bugs": {
     "url": "https://github.com/righteffort/empower-poster/issues"
