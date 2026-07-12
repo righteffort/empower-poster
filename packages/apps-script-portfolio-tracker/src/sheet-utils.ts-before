@@ -1,3 +1,28 @@
+export class OurError extends Error {}
+
+/**
+  Convenience functions for operating on Tables in Portfolio Tracker Spreadsheet.
+ */
+export function makeTableHelper(
+  spreadsheetId: string,
+  sheet: GoogleAppsScript.Spreadsheet.Sheet,
+  tableName: string,
+): TableHelper | undefined {
+  try {
+    if (typeof Sheets === "undefined") {
+      throw new OurError("Must enable Sheets service");
+    }
+    const sheetsService = Sheets as MyGoogleAppsScript.Sheets;
+    return new TableHelper(sheetsService, spreadsheetId, sheet, tableName);
+  } catch (e) {
+    if (e instanceof OurError) {
+      Logger.log(e.message);
+      return;
+    }
+    throw e;
+  }
+}
+
 // Type-safe subsets of Sheets.Table and Sheets.Sheet: no undefined fields
 interface GTable {
   columnProperties: {
@@ -32,12 +57,13 @@ interface TableHelperState {
   lastTableRowInSheet: number;
 }
 
-export class TableHelper {
+class TableHelper {
   private sheetsService: MyGoogleAppsScript.Sheets;
   private spreadsheetId: string;
   private sheet: GoogleAppsScript.Spreadsheet.Sheet;
   private tableName: string;
   private state: TableHelperState;
+  private isFormulaTable: boolean;
   private lastRowAdjustment: 0 | 1; // 1 for formula tables, to preserve default last row
   constructor(
     sheetsService: MyGoogleAppsScript.Sheets,
@@ -50,7 +76,8 @@ export class TableHelper {
     this.sheet = sheet;
     this.tableName = tableName;
     this.state = this.refreshState();
-    this.lastRowAdjustment = 0;
+    this.isFormulaTable = this.getIsFormulaTable();
+    this.lastRowAdjustment = this.isFormulaTable ? 1 : 0;
   }
   private getState(
     spreadsheetId: string,
@@ -66,10 +93,10 @@ export class TableHelper {
       (s) => s.properties?.title === sheetTitle,
     )[0];
     if (_gsheet === undefined) {
-      throw new Error(`No such sheet ${sheetTitle}`);
+      throw new OurError(`No such sheet ${sheetTitle}`);
     }
     let fail = () => {
-      throw new Error(`Incomplete sheet ${sheetTitle}`);
+      throw new OurError(`Incomplete sheet ${sheetTitle}`);
     };
     const _gproperties = _gsheet?.properties ?? fail();
     const gsheet: GSheet = {
@@ -84,10 +111,10 @@ export class TableHelper {
     const _gtables = _gsheet.tables;
     const _gtable = _gtables?.filter((t) => t.name === tableName)[0];
     if (_gtable === undefined) {
-      throw new Error(`No such table ${sheetTitle}.${tableName}.`);
+      throw new OurError(`No such table ${sheetTitle}.${tableName}.`);
     }
     fail = () => {
-      throw new Error(`Incomplete table ${sheetTitle}.${tableName}`);
+      throw new OurError(`Incomplete table ${sheetTitle}.${tableName}`);
     };
     const columnProperties = _gtable.columnProperties?.map((p) => {
       return {
@@ -111,7 +138,7 @@ export class TableHelper {
       gtable.range.startRowIndex + 1 >= gtable.range.endRowIndex || // +1 for header row
       gtable.range.startColumnIndex >= gtable.range.endColumnIndex
     ) {
-      throw new Error(
+      throw new OurError(
         `Table ${sheetTitle}.${tableName} has zero data rows or zero columns`,
       );
     }
@@ -122,6 +149,22 @@ export class TableHelper {
       gtable.columnProperties.map((p) => [p.columnName, p.columnIndex]),
     );
     return { gsheet, gtable, columnNameToIndex, lastTableRowInSheet };
+  }
+
+  private getIsFormulaTable() {
+    const gridRange = this.state.gtable.range;
+    const lastRowFormulas = this.sheet
+      .getRange(
+        gridRange.endRowIndex,
+        gridRange.startColumnIndex + 1,
+        1,
+        gridRange.endColumnIndex - gridRange.startColumnIndex,
+      )
+      .getFormulas()[0];
+    if (lastRowFormulas == null) {
+      throw new Error("Logic bug in getIsFormulaTable");
+    }
+    return !lastRowFormulas.every((f) => f === "");
   }
 
   updateRowCount(newRowCount: number, pruneRows = false) {
@@ -143,9 +186,10 @@ export class TableHelper {
   }
 
   private shrinkRowCount(newRowCount: number) {
-    if (newRowCount < 2) {
-      // TODO too cautious
-      throw new Error("Must have at least two table rows");
+    if (newRowCount + this.lastRowAdjustment < 2) {
+      throw new Error(
+        "Must have at least two table rows including empty row for formula table",
+      );
     }
     const r = this.getRange();
     if (r == null) {
@@ -202,7 +246,7 @@ export class TableHelper {
       newGridRange.endRowIndex - (newGridRange.startRowIndex + 1) <
       rowsActuallyNeeded
     ) {
-      throw new Error(
+      throw new OurError(
         `Failed to enlarge ${this.sheet.getSheetName()}.${this.tableName} to ${rowsActuallyNeeded} data rows`,
       );
     }
@@ -229,6 +273,23 @@ export class TableHelper {
       return;
     }
     return this.getRangeForColumns(tcolumnIndex, 1);
+  }
+
+  getColumnDefaultFormula(columnName: string): string | undefined {
+    if (!this.isFormulaTable) {
+      throw new Error(`${this.state.gtable.name} is not a formula table`);
+    }
+    const tcolumnIndex = this.state.columnNameToIndex.get(columnName);
+    if (tcolumnIndex == null) {
+      return;
+    }
+    const gridRange = this.state.gtable.range;
+    return this.sheet
+      .getRange(
+        gridRange.endRowIndex,
+        gridRange.startColumnIndex + tcolumnIndex + 1,
+      )
+      .getFormula();
   }
 
   /*

@@ -8,6 +8,8 @@ import type {
   Account,
 } from "@righteffort/empower-poster-types";
 
+import { TableHelper } from "./sheet-utils.js";
+
 function fail(message = "Internal error"): never {
   throw new Error(message);
 }
@@ -88,15 +90,15 @@ export function EMPOWER_VALUE(
   return values[rowNumber - 1] ?? "";
 }
 
-const EMPOWER_ACCOUNTS_SHEET_NAME = "Empower Accounts";
-const EMPOWER_ASSETS_SHEET_NAME = "Empower Assets";
-const EMPOWER_HOLDINGS_SHEET_NAME = "Empower Holdings";
-
 class AssetAllocationUpater {
   private readonly holdingsArray: HoldingEntry[];
   private readonly classifications: Record<string, Classification[]>;
   private readonly accountMap: Map<number, Account>;
+  private sheetsService: MyGoogleAppsScript.Sheets;
   private readonly spreadsheet: GoogleAppsScript.Spreadsheet.Spreadsheet;
+  private readonly spreadsheetId: string;
+  // private readonly accountSetupSheet: GoogleAppsScript.Spreadsheet.Sheet;
+  private readonly assetSetupSheet: GoogleAppsScript.Spreadsheet.Sheet;
   private readonly empowerAccountsSheet: GoogleAppsScript.Spreadsheet.Sheet;
   private readonly empowerAssetsSheet: GoogleAppsScript.Spreadsheet.Sheet;
   private readonly empowerHoldingsSheet: GoogleAppsScript.Spreadsheet.Sheet;
@@ -106,6 +108,11 @@ class AssetAllocationUpater {
     classifications: Classifications,
     accounts: Account[],
   ) {
+    // const ACCOUNT_SETUP_SHEET_NAME = "Account Setup";
+    const ASSET_SETUP_SHEET_NAME = "Asset Setup";
+    const EMPOWER_ACCOUNTS_SHEET_NAME = "Empower Accounts";
+    const EMPOWER_ASSETS_SHEET_NAME = "Empower Assets";
+    const EMPOWER_HOLDINGS_SHEET_NAME = "Empower Holdings";
     const allAccounts = new Map(accounts.map((a) => [a.id, a]));
     const accountIds = [...new Set(holdingsArray.map((h) => h.userAccountId))];
     this.accountMap = new Map(
@@ -116,7 +123,18 @@ class AssetAllocationUpater {
     );
     this.holdingsArray = holdingsArray;
     this.classifications = classifications;
+    if (typeof Sheets === "undefined") {
+      throw new Error("Must enable Sheets service");
+    }
+    this.sheetsService = Sheets as MyGoogleAppsScript.Sheets;
     this.spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    this.spreadsheetId = this.spreadsheet.getId();
+    // this.accountSetupSheet =
+    //   this.spreadsheet.getSheetByName(ACCOUNT_SETUP_SHEET_NAME) ||
+    //   fail(`'${ACCOUNT_SETUP_SHEET_NAME}' sheet missing`);
+    this.assetSetupSheet =
+      this.spreadsheet.getSheetByName(ASSET_SETUP_SHEET_NAME) ||
+      fail(`'${ASSET_SETUP_SHEET_NAME}' sheet missing`);
     this.empowerAccountsSheet =
       this.spreadsheet.getSheetByName(EMPOWER_ACCOUNTS_SHEET_NAME) ||
       fail(`'${EMPOWER_ACCOUNTS_SHEET_NAME}' sheet missing`);
@@ -137,7 +155,7 @@ class AssetAllocationUpater {
   private updateEmpowerAccountsSheet() {
     const sheet = this.empowerAccountsSheet;
     sheet.clearContents();
-    this.updateInstitutions(0);
+    this.updateInstitutions(1);
     this.updateAccounts(sheet.getLastColumn() + 2);
   }
 
@@ -183,7 +201,7 @@ class AssetAllocationUpater {
           a.accountName.localeCompare(b.accountName) ||
           a.ticker.localeCompare(b.ticker),
       )
-      .map((r) => [r.accountName, r.ticker, r.quantity]);
+      .map((r) => [formatAsString(r.accountName), r.ticker, r.quantity]);
     const HOLDINGS_TABLE_NAME = "Holdings";
     const sheet = this.empowerHoldingsSheet;
     sheet.clearContents();
@@ -216,23 +234,39 @@ class AssetAllocationUpater {
           fraction: c.fraction,
         })),
     );
-    // const classCategories = [
-    //   ...new Set(flatAssets.map((a) => a.classes[0] ?? "")),
-    // ];
+    const classCategories = [
+      ...new Set(flatAssets.map((a) => a.classes[0] ?? "")),
+    ];
+    const sheet = this.empowerAssetsSheet;
+    const classCategoryParentMap = this.updateClassCategories(classCategories);
     const assetClasses = Array.from(
       new Set(flatAssets.map((a) => a.classes.join("\0"))),
     )
       .map((v) => v.split("\0") as [string, string])
       .sort(
         (a: [string, string], b: [string, string]) =>
-          a[0].localeCompare(b[0]) || a[1].localeCompare(b[1]),
+          (classCategoryParentMap.get(a[0]) ?? "").localeCompare(
+            classCategoryParentMap.get(b[0]) ?? "",
+          ) ||
+          a[0].localeCompare(b[0]) ||
+          a[1].localeCompare(b[1]),
       );
-    const sheet = this.empowerAssetsSheet;
     sheet.clearContents();
-    this.updateAssets(flatAssets, 0);
-    this.updateAssetClasses(assetClasses, sheet.getLastColumn() + 2);
-    // this.updateClassCategories(classCategories, sheet.getLastColumn() + 2);
+    this.updateAssetClasses(assetClasses, 1);
+    this.updateAssets(
+      flatAssets.sort(
+        (a, b) =>
+          a.ticker.localeCompare(b.ticker) ||
+          (classCategoryParentMap.get(a.classes[0]) ?? "").localeCompare(
+            classCategoryParentMap.get(b.classes[0]) ?? "",
+          ) ||
+          a.classes[0].localeCompare(b.classes[0]) ||
+          a.classes[1].localeCompare(b.classes[1]),
+      ),
+      sheet.getLastColumn() + 2,
+    );
   }
+
   updateAssets(
     flatAssets: {
       ticker: string;
@@ -251,7 +285,7 @@ class AssetAllocationUpater {
         // TODO: Check that this interoperates with our "column formulas" for name and price
         return [
           a.ticker,
-          h?.cusip ?? "",
+          formatAsString(h?.cusip ?? ""),
           h?.cusip ? "" : a.ticker,
           a.classes[1],
           a.fraction,
@@ -274,13 +308,51 @@ class AssetAllocationUpater {
   private updateAssetClasses(assetClasses: string[][], column: number) {
     const headers = ["Name", "Category"].map((c) => `Asset Classes:${c}`);
     this.empowerAssetsSheet
-      .getRange(1, column, assetClasses.length, headers.length)
+      .getRange(1, column, assetClasses.length + 1, headers.length)
       .setValues([headers, ...assetClasses.map((cs) => [cs[1], cs[0]])]);
   }
 
-  // private updateClassCategories(incomingClassCategories: string[], column: number) {
-  //   // TODO: write nothing at all (current), or preserve existing mappings.
-  // }
+  private updateClassCategories(incomingClassCategories: string[]) {
+    const CLASS_CATEGORIES_TABLE_NAME = "Class Categories";
+    const NAME_COLUMN_NAME = "Name";
+    const helper = new TableHelper(
+      this.sheetsService,
+      this.spreadsheetId,
+      this.assetSetupSheet,
+      CLASS_CATEGORIES_TABLE_NAME,
+    );
+    const table_range =
+      helper.getRange() || fail(`${CLASS_CATEGORIES_TABLE_NAME} not found`);
+    const name_range =
+      helper.getColumnRange(NAME_COLUMN_NAME) ||
+      fail(`${CLASS_CATEGORIES_TABLE_NAME}:${NAME_COLUMN_NAME} not found`);
+    if (
+      table_range.getNumColumns() !== 2 ||
+      name_range.getColumn() !== table_range.getColumn()
+    ) {
+      throw new Error(
+        `${CLASS_CATEGORIES_TABLE_NAME}:${NAME_COLUMN_NAME} has unexpected shape`,
+      );
+    }
+    const existingNameParents = new Map(
+      (table_range.getValues() as [string, string][]).filter((nameParent) =>
+        incomingClassCategories.includes(nameParent[0]),
+      ),
+    );
+    const newNameParents: [string, string][] = incomingClassCategories
+      .map((cc): [string, string] => [cc, existingNameParents.get(cc) ?? ""])
+      .sort((a, b) => a[1].localeCompare(b[1]) || a[0].localeCompare(b[0]));
+    const newCategoriesSorted = incomingClassCategories.sort();
+    const existingCategoriesSorted = [...existingNameParents.keys()].sort();
+    if (
+      newCategoriesSorted.length !== existingCategoriesSorted.length ||
+      !newCategoriesSorted.every((c, i) => existingCategoriesSorted[i] === c)
+    ) {
+      helper.updateRowCount(newNameParents.length);
+      (helper.getRange() || fail()).setValues(newNameParents);
+    }
+    return new Map(newNameParents);
+  }
 }
 
 export function doPost(event: GoogleAppsScript.Events.DoPost) {
@@ -333,6 +405,7 @@ export function doPost(event: GoogleAppsScript.Events.DoPost) {
     invalidateCache();
   }
 }
+
 export function placeholder(): boolean {
   return true;
 }
