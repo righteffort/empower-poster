@@ -1,4 +1,5 @@
 - ditch vendor/src/sheets_v4.d.ts as soon as possible
+- expand/shrink tables to fit data!
 
 maybe simplify
 - this depends on https://issuetracker.google.com/issues/525219695 being fixed

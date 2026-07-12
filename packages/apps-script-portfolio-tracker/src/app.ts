@@ -52,9 +52,18 @@ export function EMPOWER_VALUE(
   const cache = CacheService.getDocumentCache() ?? fail();
   const cached = cache.get(key);
   if (cached != null) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return (JSON.parse(cached) as any[])[rowNumber - 1] ?? "";
+    return JSON.parse(cached)[rowNumber - 1] ?? "";
   }
+  const values = computeCacheEntry(tableName, columnName);
+  const serialized = JSON.stringify(values);
+  if (serialized.length > 100 * 1000) {
+    throw new Error(`Too much data for ${tableName}:${columnName} to cache`);
+  }
+  cache.put(key, serialized);
+  return values[rowNumber - 1] ?? "";
+}
+
+function computeCacheEntry(tableName: string, columnName: string) {
   const EMPOWER_SHEET_BY_TABLE: Record<string, string> = {
     Holdings: "Empower Holdings",
     Assets: "Empower Assets",
@@ -78,16 +87,10 @@ export function EMPOWER_VALUE(
   if (columnNumber <= 0) {
     throw new Error(`Column ${columnHeader} not found in ${sheetName}`);
   }
-  const values = sheet
+  return sheet
     .getRange(1, columnNumber, sheet.getLastRow(), 1)
     .getValues()
     .map((r) => r[0]);
-  const serialized = JSON.stringify(values);
-  if (serialized.length > 100 * 1000) {
-    throw new Error(`Too much data in ${sheetName}:${columnName} to cache`);
-  }
-  cache.put(key, serialized);
-  return values[rowNumber - 1] ?? "";
 }
 
 class AssetAllocationUpater {
@@ -384,6 +387,7 @@ export function doPost(event: GoogleAppsScript.Events.DoPost) {
         accounts,
       ).updateSpreadsheet();
     } finally {
+      invalidateCache();
       lock?.releaseLock();
     }
     const responseBody: PostResponse = {
@@ -401,8 +405,6 @@ export function doPost(event: GoogleAppsScript.Events.DoPost) {
     return ContentService.createTextOutput(
       JSON.stringify(responseBody),
     ).setMimeType(ContentService.MimeType.JSON);
-  } finally {
-    invalidateCache();
   }
 }
 
