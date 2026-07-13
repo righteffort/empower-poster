@@ -23,7 +23,7 @@ function formatAsString(accountName: string): string {
   }
   return accountName;
 }
-
+/*
 function getCacheVersion() {
   return (
     PropertiesService.getDocumentProperties().getProperty("CACHE_VERSION") ||
@@ -37,8 +37,9 @@ function invalidateCache() {
     String(Number(getCacheVersion()) + 1),
   );
 }
-
-export function EMPOWER_VALUE(
+ */
+/*
+export function NOPE_EMPOWER_VALUE(
   tableName: string,
   columnName: string,
   rowNumber: number,
@@ -92,7 +93,7 @@ function computeCacheEntry(tableName: string, columnName: string) {
     .getValues()
     .map((r) => r[0]);
 }
-
+ */
 class AssetAllocationUpater {
   private readonly holdingsArray: HoldingEntry[];
   private readonly classifications: Record<string, Classification[]>;
@@ -100,8 +101,9 @@ class AssetAllocationUpater {
   private sheetsService: MyGoogleAppsScript.Sheets;
   private readonly spreadsheet: GoogleAppsScript.Spreadsheet.Spreadsheet;
   private readonly spreadsheetId: string;
-  // private readonly accountSetupSheet: GoogleAppsScript.Spreadsheet.Sheet;
+  private readonly accountSetupSheet: GoogleAppsScript.Spreadsheet.Sheet;
   private readonly assetSetupSheet: GoogleAppsScript.Spreadsheet.Sheet;
+  private readonly holdingsSheet: GoogleAppsScript.Spreadsheet.Sheet;
   private readonly empowerAccountsSheet: GoogleAppsScript.Spreadsheet.Sheet;
   private readonly empowerAssetsSheet: GoogleAppsScript.Spreadsheet.Sheet;
   private readonly empowerHoldingsSheet: GoogleAppsScript.Spreadsheet.Sheet;
@@ -111,8 +113,9 @@ class AssetAllocationUpater {
     classifications: Classifications,
     accounts: Account[],
   ) {
-    // const ACCOUNT_SETUP_SHEET_NAME = "Account Setup";
+    const ACCOUNT_SETUP_SHEET_NAME = "Account Setup";
     const ASSET_SETUP_SHEET_NAME = "Asset Setup";
+    const HOLDINGS_SHEET_NAME = "Holdings";
     const EMPOWER_ACCOUNTS_SHEET_NAME = "Empower Accounts";
     const EMPOWER_ASSETS_SHEET_NAME = "Empower Assets";
     const EMPOWER_HOLDINGS_SHEET_NAME = "Empower Holdings";
@@ -132,12 +135,15 @@ class AssetAllocationUpater {
     this.sheetsService = Sheets as MyGoogleAppsScript.Sheets;
     this.spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
     this.spreadsheetId = this.spreadsheet.getId();
-    // this.accountSetupSheet =
-    //   this.spreadsheet.getSheetByName(ACCOUNT_SETUP_SHEET_NAME) ||
-    //   fail(`'${ACCOUNT_SETUP_SHEET_NAME}' sheet missing`);
+    this.accountSetupSheet =
+      this.spreadsheet.getSheetByName(ACCOUNT_SETUP_SHEET_NAME) ||
+      fail(`'${ACCOUNT_SETUP_SHEET_NAME}' sheet missing`);
     this.assetSetupSheet =
       this.spreadsheet.getSheetByName(ASSET_SETUP_SHEET_NAME) ||
       fail(`'${ASSET_SETUP_SHEET_NAME}' sheet missing`);
+    this.holdingsSheet =
+      this.spreadsheet.getSheetByName(HOLDINGS_SHEET_NAME) ||
+      fail(`'${HOLDINGS_SHEET_NAME}' sheet missing`);
     this.empowerAccountsSheet =
       this.spreadsheet.getSheetByName(EMPOWER_ACCOUNTS_SHEET_NAME) ||
       fail(`'${EMPOWER_ACCOUNTS_SHEET_NAME}' sheet missing`);
@@ -150,16 +156,20 @@ class AssetAllocationUpater {
   }
 
   updateSpreadsheet() {
+    Logger.log("Update accounts");
     this.updateEmpowerAccountsSheet();
+    Logger.log("Update assets");
     this.updateEmpowerAssetsSheet();
+    Logger.log("Update holdings");
     this.updateEmpowerHoldingsSheet();
+    Logger.log("Done");
   }
 
   private updateEmpowerAccountsSheet() {
     const sheet = this.empowerAccountsSheet;
     sheet.clearContents();
-    this.updateInstitutions(1);
-    this.updateAccounts(sheet.getLastColumn() + 2);
+    this.updateAccounts(1);
+    this.updateInstitutions(sheet.getLastColumn() + 2);
   }
 
   private updateInstitutions(column: number) {
@@ -173,23 +183,65 @@ class AssetAllocationUpater {
       institutions.length + 1,
       1,
     );
+    const INSTITUTIONS_TABLE_NAME = "Institutions";
     institutionsRange.setValues(
-      ["Institutions:Name", ...institutions].map((c) => [formatAsString(c)]),
+      [`${INSTITUTIONS_TABLE_NAME}:Name`, ...institutions].map((c) => [
+        formatAsString(c),
+      ]),
     );
+    const helper = new TableHelper(
+      this.sheetsService,
+      this.spreadsheetId,
+      this.accountSetupSheet,
+      INSTITUTIONS_TABLE_NAME,
+    );
+    helper.updateRowCount(institutions.length);
   }
 
   private updateAccounts(column: number) {
-    // TODO: We also have to massage the contents of the Accounts table in Account Setup!
+    // Capture existing owner and type values
+    const ACCOUNTS_TABLE_NAME = "Accounts";
+    const helper = new TableHelper(
+      this.sheetsService,
+      this.spreadsheetId,
+      this.accountSetupSheet,
+      ACCOUNTS_TABLE_NAME,
+    );
+    const NAME_COLUMN_NAME = "Name";
+    const TYPE_COLUMN_NAME = "Type";
+    const OWNER_COLUMN_NAME = "Owner";
+    const columnIndices = helper.getColumnIndexByNameMap();
+    const existingAccountData = (helper.getRange() ?? fail()).getValues();
+
+    const existingAccounts = new Map(
+      existingAccountData.map((r) => [
+        r[columnIndices.get(NAME_COLUMN_NAME) ?? fail()],
+        {
+          type: r[columnIndices.get(TYPE_COLUMN_NAME) ?? fail()],
+          owner: r[columnIndices.get(OWNER_COLUMN_NAME) ?? fail()],
+        },
+      ]),
+    );
+
+    // Write to the Empower Sheet
     const accounts: [string, string][] = [...this.accountMap.values()]
       .sort((a: Account, b: Account) => a.name.localeCompare(b.name))
       .map((a) => [formatAsString(a.name), formatAsString(a.firmName)]);
-    const ACCOUNTS_TABLE_NAME = "Accounts";
     const headers = ["Name", "Institution"].map(
       (c) => `${ACCOUNTS_TABLE_NAME}:${c}`,
     );
     const sheet = this.empowerAccountsSheet;
     const accountsRange = sheet.getRange(1, column, accounts.length + 1, 2);
     accountsRange.setValues([headers, ...accounts]);
+
+    // Adjust table size and restore owner and type values
+    helper.updateRowCount(accounts.length);
+    (helper.getColumnRange(TYPE_COLUMN_NAME) ?? fail()).setValues(
+      accounts.map((a) => [existingAccounts.get(a[0])?.type ?? ""]),
+    );
+    (helper.getColumnRange(OWNER_COLUMN_NAME) ?? fail()).setValues(
+      accounts.map((a) => [existingAccounts.get(a[0])?.owner ?? ""]),
+    );
   }
 
   private updateEmpowerHoldingsSheet() {
@@ -214,6 +266,13 @@ class AssetAllocationUpater {
     sheet
       .getRange(1, 1, holdingRows.length + 1, 3)
       .setValues([headers, ...holdingRows]);
+    const helper = new TableHelper(
+      this.sheetsService,
+      this.spreadsheetId,
+      this.holdingsSheet,
+      HOLDINGS_TABLE_NAME,
+    );
+    helper.updateRowCount(holdingRows.length);
   }
 
   private adjustClasses(classes: [string, string]): [string, string] {
@@ -285,7 +344,6 @@ class AssetAllocationUpater {
       .sort((a, b) => a.ticker.localeCompare(b.ticker))
       .map((a) => {
         const h = holdings.get(a.ticker);
-        // TODO: Check that this interoperates with our "column formulas" for name and price
         return [
           a.ticker,
           formatAsString(h?.cusip ?? ""),
@@ -295,6 +353,7 @@ class AssetAllocationUpater {
           h?.cusip ? "" : h?.price,
         ];
       });
+    const ASSETS_TABLE_NAME = "Assets";
     const headers = [
       "Ticker",
       "Cusip",
@@ -302,17 +361,34 @@ class AssetAllocationUpater {
       "Class",
       "Class Pct",
       "Price",
-    ].map((c) => `Assets:${c}`);
+    ].map((c) => `${ASSETS_TABLE_NAME}:${c}`);
     this.empowerAssetsSheet
       .getRange(1, column, assetRows.length + 1, headers.length)
       .setValues([headers, ...assetRows]);
+    const helper = new TableHelper(
+      this.sheetsService,
+      this.spreadsheetId,
+      this.assetSetupSheet,
+      ASSETS_TABLE_NAME,
+    );
+    helper.updateRowCount(assetRows.length);
   }
 
   private updateAssetClasses(assetClasses: string[][], column: number) {
-    const headers = ["Name", "Category"].map((c) => `Asset Classes:${c}`);
+    const ASSET_CLASSES_TABLE_NAME = "Asset Classes";
+    const headers = ["Name", "Category"].map(
+      (c) => `${ASSET_CLASSES_TABLE_NAME}:${c}`,
+    );
     this.empowerAssetsSheet
       .getRange(1, column, assetClasses.length + 1, headers.length)
       .setValues([headers, ...assetClasses.map((cs) => [cs[1], cs[0]])]);
+    const helper = new TableHelper(
+      this.sheetsService,
+      this.spreadsheetId,
+      this.assetSetupSheet,
+      ASSET_CLASSES_TABLE_NAME,
+    );
+    helper.updateRowCount(assetClasses.length);
   }
 
   private updateClassCategories(incomingClassCategories: string[]) {
@@ -387,7 +463,7 @@ export function doPost(event: GoogleAppsScript.Events.DoPost) {
         accounts,
       ).updateSpreadsheet();
     } finally {
-      invalidateCache();
+      // invalidateCache();
       lock?.releaseLock();
     }
     const responseBody: PostResponse = {

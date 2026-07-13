@@ -38,7 +38,7 @@ export class TableHelper {
   private sheet: GoogleAppsScript.Spreadsheet.Sheet;
   private tableName: string;
   private state: TableHelperState;
-  private lastRowAdjustment: 0 | 1; // 1 for formula tables, to preserve default last row
+  private static LAST_ROW_ADJUSTMENT = 1; // To keep last row off-limits
   constructor(
     sheetsService: MyGoogleAppsScript.Sheets,
     spreadsheetId: string,
@@ -50,7 +50,6 @@ export class TableHelper {
     this.sheet = sheet;
     this.tableName = tableName;
     this.state = this.refreshState();
-    this.lastRowAdjustment = 0;
   }
   private getState(
     spreadsheetId: string,
@@ -143,9 +142,10 @@ export class TableHelper {
   }
 
   private shrinkRowCount(newRowCount: number) {
-    if (newRowCount < 2) {
-      // TODO too cautious
-      throw new Error("Must have at least two table rows");
+    if (newRowCount + TableHelper.LAST_ROW_ADJUSTMENT < 2) {
+      throw new Error(
+        "Must have at least two table rows including empty row for formula table",
+      );
     }
     const r = this.getRange();
     if (r == null) {
@@ -175,7 +175,7 @@ export class TableHelper {
     ];
     const numRows = lastRow - firstRow + 1;
     const numColumns = lastColumn - firstColumn + 1;
-    const rowsActuallyNeeded = newRowCount + this.lastRowAdjustment;
+    const rowsActuallyNeeded = newRowCount + TableHelper.LAST_ROW_ADJUSTMENT;
     const totalRowsToAdd = rowsActuallyNeeded - numRows;
     let numRowsAvailable = numRows - 1; // We have to insert after the first row to avoid breaking named ranges.
     let remainingRowsToAdd = totalRowsToAdd;
@@ -208,12 +208,16 @@ export class TableHelper {
     }
   }
 
+  getColumnIndexByNameMap() {
+    return this.state.columnNameToIndex;
+  }
+
   /** The number of data rows. */
   getNumRows() {
     const gridRange = this.state.gtable.range;
     return (
       gridRange.endRowIndex -
-      this.lastRowAdjustment -
+      TableHelper.LAST_ROW_ADJUSTMENT -
       (gridRange.startRowIndex + 1)
     );
   }
@@ -252,7 +256,9 @@ export class TableHelper {
     return this.sheet.getRange(
       gridStartDataRowIndex + 1,
       gridRange.startColumnIndex + startColumnIndex + 1,
-      gridRange.endRowIndex - this.lastRowAdjustment - gridStartDataRowIndex,
+      gridRange.endRowIndex -
+        TableHelper.LAST_ROW_ADJUSTMENT -
+        gridStartDataRowIndex,
       numColumns,
     );
   }
