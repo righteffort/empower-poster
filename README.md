@@ -4,7 +4,8 @@ Browser extension that uploads holdings and asset classification data
 from [Empower](https://ira.empower-retirement.com/) (formerly Personal
 Capital) to a user-specified external HTTPS endpoint. For example, you
 could update a Google Sheets spreadsheet with the data by having the endpoint be
-an Apps Script web app.
+an Apps Script web app. Available in the
+[Chrome Web Store](https://chromewebstore.google.com/detail/empower-poster/lfjdkpiggkdkglapfjbifhgfhmilcmim).
 
 ## Endpoint request/response API
 
