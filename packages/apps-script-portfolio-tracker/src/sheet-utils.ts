@@ -12,7 +12,7 @@ export function makeTableHelper(
     if (typeof Sheets === "undefined") {
       throw new OurError("Must enable Sheets service");
     }
-    const sheetsService = Sheets as MyGoogleAppsScript.Sheets;
+    const sheetsService = Sheets as GoogleAppsScript.Sheets;
     return new TableHelper(sheetsService, spreadsheetId, sheet, tableName);
   } catch (e) {
     if (e instanceof OurError) {
@@ -58,7 +58,7 @@ interface TableHelperState {
 }
 
 class TableHelper {
-  private sheetsService: MyGoogleAppsScript.Sheets;
+  private sheetsService: GoogleAppsScript.Sheets;
   private spreadsheetId: string;
   private sheet: GoogleAppsScript.Spreadsheet.Sheet;
   private tableName: string;
@@ -66,7 +66,7 @@ class TableHelper {
   private isFormulaTable: boolean;
   private lastRowAdjustment: 0 | 1; // 1 for formula tables, to preserve default last row
   constructor(
-    sheetsService: MyGoogleAppsScript.Sheets,
+    sheetsService: GoogleAppsScript.Sheets,
     spreadsheetId: string,
     sheet: GoogleAppsScript.Spreadsheet.Sheet,
     tableName: string,
